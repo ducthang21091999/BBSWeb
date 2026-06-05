@@ -1,0 +1,27 @@
+# Claude Code per-project settings
+.claude/
+
+# macOS metadata
+.DS_Store
+._*
+.AppleDouble
+.LSOverride
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dependency folders (nếu sau này dùng npm/composer)
+node_modules/
+vendor/
+
+# Build artifacts
+dist/
+build/
+*.log
+
+# OS caches
+Thumbs.db
+ehthumbs.db

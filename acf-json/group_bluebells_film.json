@@ -1,0 +1,282 @@
+{
+  "key": "group_bluebells_film",
+  "title": "Film Details",
+  "fields": [
+    {
+      "key": "field_tab_basic",
+      "label": "Thông tin cơ bản",
+      "type": "tab",
+      "placement": "top"
+    },
+    {
+      "key": "field_film_vn_title",
+      "label": "Tên tiếng Việt",
+      "name": "film_vn_title",
+      "type": "text",
+      "instructions": "Tên phim bằng tiếng Việt (hiện bên dưới tên chính).",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "placeholder": "vd: Phí Phồng"
+    },
+    {
+      "key": "field_film_genre",
+      "label": "Thể loại (Genre)",
+      "name": "film_genre_tax",
+      "type": "taxonomy",
+      "instructions": "Chọn một hoặc nhiều thể loại.",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "taxonomy": "film_genre",
+      "add_term": 1,
+      "save_terms": 1,
+      "load_terms": 1,
+      "return_format": "object",
+      "field_type": "checkbox",
+      "allow_null": 0,
+      "multiple": 0
+    },
+    {
+      "key": "field_film_rating",
+      "label": "Rating",
+      "name": "film_rating",
+      "type": "text",
+      "instructions": "vd: T18, P, K",
+      "required": 0,
+      "wrapper": { "width": "25", "class": "", "id": "" },
+      "placeholder": "T18"
+    },
+    {
+      "key": "field_film_runtime",
+      "label": "Runtime",
+      "name": "film_runtime",
+      "type": "text",
+      "instructions": "Số phút, vd: 112",
+      "required": 0,
+      "wrapper": { "width": "25", "class": "", "id": "" },
+      "placeholder": "112",
+      "append": "phút"
+    },
+    {
+      "key": "field_film_release_date",
+      "label": "Ngày chiếu",
+      "name": "film_release_date",
+      "type": "date_picker",
+      "required": 0,
+      "wrapper": { "width": "25", "class": "", "id": "" },
+      "display_format": "d/m/Y",
+      "return_format": "d/m/Y",
+      "first_day": 1
+    },
+    {
+      "key": "field_film_format",
+      "label": "Định dạng",
+      "name": "film_format",
+      "type": "text",
+      "instructions": "vd: 2D, 3D, IMAX",
+      "required": 0,
+      "wrapper": { "width": "25", "class": "", "id": "" },
+      "placeholder": "2D"
+    },
+    {
+      "key": "field_film_language",
+      "label": "Ngôn ngữ",
+      "name": "film_language",
+      "type": "text",
+      "instructions": "vd: Tiếng Việt, English",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "placeholder": "Tiếng Việt"
+    },
+
+    {
+      "key": "field_tab_media",
+      "label": "Hình ảnh & Video",
+      "type": "tab",
+      "placement": "top"
+    },
+    {
+      "key": "field_film_featured_banner",
+      "label": "Hiển thị trên Banner trang chủ",
+      "name": "film_featured_banner",
+      "type": "true_false",
+      "instructions": "Bật để phim xuất hiện trong slideshow banner ở trang chủ.",
+      "required": 0,
+      "wrapper": { "width": "", "class": "", "id": "" },
+      "default_value": 0,
+      "ui": 1,
+      "ui_on_text": "Có",
+      "ui_off_text": "Không"
+    },
+    {
+      "key": "field_film_poster",
+      "label": "Poster",
+      "name": "film_poster",
+      "type": "image",
+      "instructions": "Portrait (2:3). Min 600×900px.",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "return_format": "id",
+      "library": "all",
+      "preview_size": "medium"
+    },
+    {
+      "key": "field_film_banner",
+      "label": "Banner",
+      "name": "film_banner",
+      "type": "image",
+      "instructions": "Landscape hero (16:9). Min 1920×1080px.",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "return_format": "id",
+      "library": "all",
+      "preview_size": "medium"
+    },
+    {
+      "key": "field_film_logo",
+      "label": "Logo phim",
+      "name": "film_logo",
+      "type": "image",
+      "instructions": "Hình logo/title treatment của phim (PNG trong suốt). Hiển thị giữa banner.",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "return_format": "id",
+      "library": "all",
+      "preview_size": "medium"
+    },
+    {
+      "key": "field_film_trailer",
+      "label": "Trailer URL",
+      "name": "film_trailer",
+      "type": "url",
+      "instructions": "YouTube hoặc Vimeo URL.",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "placeholder": "https://youtube.com/watch?v=..."
+    },
+    {
+      "key": "field_film_videos",
+      "label": "Videos bổ sung",
+      "name": "film_videos",
+      "type": "textarea",
+      "instructions": "Mỗi dòng 1 URL YouTube/Vimeo.",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "rows": 4
+    },
+    {
+      "key": "field_tab_content",
+      "label": "Nội dung",
+      "type": "tab",
+      "placement": "top"
+    },
+    {
+      "key": "field_film_logline",
+      "label": "Logline",
+      "name": "film_logline",
+      "type": "textarea",
+      "required": 0,
+      "wrapper": { "width": "", "class": "", "id": "" },
+      "rows": 2,
+      "new_lines": "br"
+    },
+    {
+      "key": "field_film_synopsis_short",
+      "label": "Synopsis ngắn",
+      "name": "film_synopsis_short",
+      "type": "textarea",
+      "required": 0,
+      "wrapper": { "width": "", "class": "", "id": "" },
+      "rows": 4,
+      "new_lines": "br"
+    },
+    {
+      "key": "field_film_synopsis_full",
+      "label": "Synopsis đầy đủ",
+      "name": "film_synopsis_full",
+      "type": "wysiwyg",
+      "required": 0,
+      "wrapper": { "width": "", "class": "", "id": "" },
+      "tabs": "all",
+      "toolbar": "basic",
+      "media_upload": 0,
+      "delay": 0
+    },
+
+    {
+      "key": "field_tab_crew",
+      "label": "Đoàn phim",
+      "type": "tab",
+      "placement": "top"
+    },
+    {
+      "key": "field_film_director",
+      "label": "Đạo diễn",
+      "name": "film_director",
+      "type": "text",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" }
+    },
+    {
+      "key": "field_film_producer",
+      "label": "Nhà sản xuất",
+      "name": "film_producer",
+      "type": "text",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" }
+    },
+    {
+      "key": "field_film_cast",
+      "label": "Diễn viên",
+      "name": "film_cast",
+      "type": "textarea",
+      "required": 0,
+      "wrapper": { "width": "", "class": "", "id": "" },
+      "rows": 3,
+      "new_lines": "br"
+    },
+
+    {
+      "key": "field_tab_links",
+      "label": "Liên kết",
+      "type": "tab",
+      "placement": "top"
+    },
+    {
+      "key": "field_film_ticket_link",
+      "label": "Link mua vé",
+      "name": "film_ticket_link",
+      "type": "url",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "placeholder": "https://..."
+    },
+    {
+      "key": "field_film_press_kit",
+      "label": "Press Kit",
+      "name": "film_press_kit",
+      "type": "url",
+      "required": 0,
+      "wrapper": { "width": "50", "class": "", "id": "" },
+      "placeholder": "https://..."
+    }
+  ],
+  "location": [
+    [
+      {
+        "param": "post_type",
+        "operator": "==",
+        "value": "film"
+      }
+    ]
+  ],
+  "menu_order": 0,
+  "position": "normal",
+  "style": "default",
+  "label_placement": "top",
+  "instruction_placement": "label",
+  "hide_on_screen": "",
+  "active": true,
+  "description": "",
+  "show_in_rest": 0,
+  "modified": 1748448000
+}
