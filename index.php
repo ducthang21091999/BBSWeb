@@ -32,7 +32,6 @@ if ( empty($banner_films) ) {
           <?php if($trailer): ?>
             <span class="btn-primary hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>">Watch Trailer</span>
           <?php endif; ?>
-          <span class="btn-ghost">View Film</span>
         </div>
       </div>
     </a>
