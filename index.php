@@ -202,7 +202,6 @@ $coming = bluebells_get_films_sorted([
       <p class="about-body">
         Our mission is to create films that celebrate Vietnamese identity, blend it with contemporary values, and bring Vietnamese stories to the global stage.
       </p>
-      <a href="<?php echo home_url('/contact'); ?>" class="btn-ghost">Partner With Us</a>
     </div>
     <div class="caps-list">
       <div class="cap-item">
@@ -250,16 +249,6 @@ $coming = bluebells_get_films_sorted([
 <?php endif; ?>
 
 <!-- CONTACT CTA -->
-<section class="contact-section section-gray section-border-top">
-  <div class="contact-inner">
-    <span class="contact-label">Work With Us</span>
-    <h2 class="contact-headline">Let's craft beautiful films together.</h2>
-    <p class="contact-sub">Whether you're a producer, sales agent, cinema partner, or brand — we'd love to hear from you.</p>
-    <div class="contact-ctas">
-      <a href="<?php echo home_url('/contact'); ?>" class="btn-primary">Contact Us</a>
-      <a href="<?php echo home_url('/contact'); ?>" class="btn-ghost">Partnership Inquiry</a>
-    </div>
-  </div>
-</section>
+<?php get_template_part('template-parts/section-contact'); ?>
 
 <?php get_footer(); ?>

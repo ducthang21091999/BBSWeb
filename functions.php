@@ -13,8 +13,121 @@ function bluebells_assets() {
         [], null );
     wp_enqueue_style( 'bluebells-style', get_stylesheet_uri(), ['bluebells-fonts'], $css_ver );
     wp_enqueue_script( 'bluebells-main', get_template_directory_uri() . '/js/main.js', [], $js_ver, true );
+
+    // Expose AJAX URL + nonce to JS for contact form
+    wp_localize_script( 'bluebells-main', 'bluebellsAjax', [
+        'url'   => admin_url('admin-ajax.php'),
+        'nonce' => wp_create_nonce('bluebells_contact_form'),
+    ]);
 }
 add_action( 'wp_enqueue_scripts', 'bluebells_assets' );
+
+// ─── CONTACT SETTINGS PAGE ───
+function bluebells_contact_settings_menu() {
+    add_options_page(
+        'Contact Info',
+        'Contact Info',
+        'manage_options',
+        'bluebells-contact',
+        'bluebells_contact_settings_page'
+    );
+}
+add_action( 'admin_menu', 'bluebells_contact_settings_menu' );
+
+function bluebells_register_contact_settings() {
+    register_setting('bluebells_contact', 'bluebells_contact_email', ['sanitize_callback' => 'sanitize_email']);
+    register_setting('bluebells_contact', 'bluebells_contact_phone', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('bluebells_contact', 'bluebells_contact_address', ['sanitize_callback' => 'sanitize_text_field']);
+    register_setting('bluebells_contact', 'bluebells_contact_form_to', ['sanitize_callback' => 'sanitize_email']);
+}
+add_action( 'admin_init', 'bluebells_register_contact_settings' );
+
+function bluebells_contact_settings_page() {
+    ?>
+    <div class="wrap">
+        <h1>Bluebells — Contact Info</h1>
+        <p>Thông tin liên hệ hiển thị ở section "Work With Us" trên trang chủ + email nhận form contact.</p>
+        <form method="post" action="options.php">
+            <?php settings_fields('bluebells_contact'); ?>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th scope="row"><label for="bluebells_contact_email">Email hiển thị</label></th>
+                    <td><input type="email" name="bluebells_contact_email" id="bluebells_contact_email"
+                        value="<?php echo esc_attr(get_option('bluebells_contact_email')); ?>"
+                        class="regular-text" placeholder="contact@bluebells.vn">
+                        <p class="description">Email công khai hiển thị cho khách thấy.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="bluebells_contact_phone">Số điện thoại</label></th>
+                    <td><input type="text" name="bluebells_contact_phone" id="bluebells_contact_phone"
+                        value="<?php echo esc_attr(get_option('bluebells_contact_phone')); ?>"
+                        class="regular-text" placeholder="+84 964 311 776">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="bluebells_contact_address">Địa chỉ</label></th>
+                    <td><input type="text" name="bluebells_contact_address" id="bluebells_contact_address"
+                        value="<?php echo esc_attr(get_option('bluebells_contact_address')); ?>"
+                        class="regular-text" placeholder="39 Đ. số 9, Tân Hưng, Quận 7, TP. HCM" style="width:480px;max-width:100%;">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="bluebells_contact_form_to">Email nhận form (đích)</label></th>
+                    <td><input type="email" name="bluebells_contact_form_to" id="bluebells_contact_form_to"
+                        value="<?php echo esc_attr(get_option('bluebells_contact_form_to')); ?>"
+                        class="regular-text" placeholder="inbox@bluebells.vn">
+                        <p class="description">Email từ form Contact khách gửi sẽ được forward về đây. Nếu trống → dùng email Admin của site.</p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
+
+// ─── CONTACT FORM AJAX HANDLER ───
+function bluebells_handle_contact_form() {
+    if ( ! check_ajax_referer('bluebells_contact_form', 'nonce', false) ) {
+        wp_send_json_error(['message' => 'Phiên đã hết hạn. Vui lòng tải lại trang.']);
+    }
+
+    $name    = sanitize_text_field($_POST['name'] ?? '');
+    $email   = sanitize_email($_POST['email'] ?? '');
+    $message = sanitize_textarea_field($_POST['message'] ?? '');
+
+    if ( ! $name || ! is_email($email) || ! $message ) {
+        wp_send_json_error(['message' => 'Vui lòng điền đủ thông tin hợp lệ.']);
+    }
+
+    // Honeypot (anti-bot) — hidden field "website" should be empty
+    if ( ! empty($_POST['website']) ) {
+        wp_send_json_success(['message' => 'Cảm ơn bạn đã liên hệ!']);  // silently accept
+    }
+
+    $to = get_option('bluebells_contact_form_to') ?: get_option('admin_email');
+    $subject = sprintf('[Bluebells Contact] %s', $name);
+    $body  = "Liên hệ mới từ website:\n\n";
+    $body .= "Tên: {$name}\n";
+    $body .= "Email: {$email}\n\n";
+    $body .= "Nội dung:\n{$message}\n";
+
+    $headers = [
+        'Content-Type: text/plain; charset=UTF-8',
+        sprintf('Reply-To: %s <%s>', $name, $email),
+    ];
+
+    $sent = wp_mail($to, $subject, $body, $headers);
+
+    if ( $sent ) {
+        wp_send_json_success(['message' => 'Cảm ơn bạn đã liên hệ! Chúng tôi sẽ phản hồi sớm nhất có thể.']);
+    } else {
+        wp_send_json_error(['message' => 'Hệ thống email tạm thời gặp lỗi. Vui lòng thử lại sau hoặc liên hệ trực tiếp qua số điện thoại.']);
+    }
+}
+add_action('wp_ajax_bluebells_contact', 'bluebells_handle_contact_form');
+add_action('wp_ajax_nopriv_bluebells_contact', 'bluebells_handle_contact_form');
 
 function bluebells_setup() {
     add_theme_support( 'title-tag' );

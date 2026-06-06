@@ -175,6 +175,46 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
+  // ─── CONTACT FORM (AJAX submit) ───
+  document.querySelectorAll('#bluebells-contact-form').forEach(form => {
+    const btn   = form.querySelector('.contact-submit');
+    const msgEl = form.querySelector('.contact-form-msg');
+
+    form.addEventListener('submit', async e => {
+      e.preventDefault();
+      if (typeof bluebellsAjax === 'undefined') return;
+
+      msgEl.className = 'contact-form-msg';
+      msgEl.textContent = '';
+      btn.disabled = true;
+      const originalLabel = btn.textContent;
+      btn.textContent = 'Sending…';
+
+      const data = new FormData(form);
+      data.append('action', 'bluebells_contact');
+      data.append('nonce', bluebellsAjax.nonce);
+
+      try {
+        const res = await fetch(bluebellsAjax.url, { method: 'POST', body: data });
+        const json = await res.json();
+        if (json.success) {
+          msgEl.textContent = json.data.message;
+          msgEl.classList.add('is-success');
+          form.reset();
+        } else {
+          msgEl.textContent = json.data.message || 'Đã có lỗi xảy ra.';
+          msgEl.classList.add('is-error');
+        }
+      } catch (err) {
+        msgEl.textContent = 'Lỗi mạng. Vui lòng thử lại.';
+        msgEl.classList.add('is-error');
+      } finally {
+        btn.disabled = false;
+        btn.textContent = originalLabel;
+      }
+    });
+  });
+
   // ─── FEATURED MOVIES: "More movies" toggle ───
   document.querySelectorAll('.more-movies-btn').forEach(btn => {
     const grid = btn.previousElementSibling;
