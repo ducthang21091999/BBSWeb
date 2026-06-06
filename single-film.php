@@ -7,7 +7,7 @@ $status    = get_film_status_label();
 $genre     = get_film_genre_string();
 $runtime   = get_film_meta('film_runtime');
 $rating    = get_film_meta('film_rating');
-$release   = get_film_meta('film_release_date');
+$release   = get_film_release_display();
 $format    = get_film_meta('film_format');
 $language  = get_film_meta('film_language');
 $logline   = get_film_meta('film_logline');
@@ -60,14 +60,11 @@ $film_logo = get_film_logo_url(null,'large');
     </div>
     <?php endif; ?>
 
-    <div class="film-overview-info">
-      <!-- Title -->
+    <div class="film-overview-meta-col">
       <h2 class="film-overview-title"><?php the_title(); ?></h2>
       <?php if($vn_title): ?>
         <p class="film-overview-vn"><?php echo esc_html($vn_title); ?></p>
       <?php endif; ?>
-
-      <!-- Quick meta — vertical list -->
       <div class="film-overview-meta">
         <?php if($rating): ?>
           <div class="meta-row"><span class="meta-label">Rating</span><span class="meta-value"><?php echo esc_html($rating); ?></span></div>
@@ -88,89 +85,52 @@ $film_logo = get_film_logo_url(null,'large');
           <div class="meta-row"><span class="meta-label">Format</span><span class="meta-value"><?php echo esc_html($format); ?></span></div>
         <?php endif; ?>
       </div>
-
-      <!-- Synopsis -->
-      <?php if($syn_short || $syn_full || $logline): ?>
-      <div class="film-overview-synopsis">
-        <?php echo wp_kses_post($syn_full ?: $syn_short ?: $logline); ?>
-      </div>
-      <?php endif; ?>
-
-      <!-- Crew -->
-      <div class="film-overview-crew">
-        <?php if($director): ?>
-        <div class="crew-block">
-          <strong>Directed By</strong>
-          <span><?php echo esc_html($director); ?></span>
-        </div>
-        <?php endif; ?>
-
-        <?php if($producer): ?>
-        <div class="crew-block">
-          <strong>Produced By</strong>
-          <span><?php echo esc_html($producer); ?></span>
-        </div>
-        <?php endif; ?>
-
-        <?php if($cast): ?>
-        <div class="crew-block">
-          <strong>Cast</strong>
-          <span><?php echo esc_html($cast); ?></span>
-        </div>
-        <?php endif; ?>
-      </div>
-
-      <!-- CTAs -->
-      <div class="film-overview-ctas">
-        <?php if($trailer): ?>
-          <a href="<?php echo esc_url($trailer); ?>" class="btn-primary" target="_blank" rel="noopener">Watch Trailer</a>
-        <?php endif; ?>
-        <?php if($ticket): ?>
-          <a href="<?php echo esc_url($ticket); ?>" class="btn-ghost" target="_blank" rel="noopener">Buy Tickets</a>
-        <?php endif; ?>
-        <?php if($press_kit): ?>
-          <a href="<?php echo esc_url($press_kit); ?>" class="btn-ghost" target="_blank" rel="noopener">Press Kit</a>
-        <?php endif; ?>
-      </div>
     </div>
+
+    <?php if($syn_short || $syn_full || $logline): ?>
+    <div class="film-overview-synopsis">
+      <?php echo wp_kses_post($syn_full ?: $syn_short ?: $logline); ?>
+    </div>
+    <?php endif; ?>
+
+    <div class="film-overview-crew">
+      <?php if($director): ?>
+      <div class="crew-block"><strong>Directed By</strong><span><?php echo esc_html($director); ?></span></div>
+      <?php endif; ?>
+      <?php if($producer): ?>
+      <div class="crew-block"><strong>Produced By</strong><span><?php echo esc_html($producer); ?></span></div>
+      <?php endif; ?>
+      <?php if($cast): ?>
+      <div class="crew-block"><strong>Cast</strong><span><?php echo esc_html($cast); ?></span></div>
+      <?php endif; ?>
+    </div>
+
   </div>
 </section>
 
 <!-- ③ VIDEOS -->
-<?php
-$video_urls = [];
-if ( $trailer ) $video_urls[] = $trailer;
-$extra = get_film_meta('film_videos');
-if ( $extra ) {
-    foreach ( array_filter(array_map('trim', explode("\n", $extra))) as $url ) {
-        if ( $url && $url !== $trailer ) $video_urls[] = $url;
-    }
-}
-$videos = [];
-foreach ( $video_urls as $url ) {
-    if ( preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/', $url, $m) ) {
-        $videos[] = $m[1];
-    }
-}
-?>
+<?php $videos = bluebells_parse_videos($trailer, get_film_meta('film_videos')); ?>
 <?php if ( $videos ): ?>
 <section class="section-pad section-dark section-border-top">
-  <p class="section-label">Videos</p>
+  <h2 class="section-heading">Videos</h2>
   <div class="video-carousel" data-count="<?php echo count($videos); ?>">
     <button class="carousel-arrow carousel-prev" aria-label="Previous">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l-8 8 8 8"/></svg>
     </button>
     <div class="carousel-viewport">
       <div class="carousel-track<?php echo count($videos) <= 3 ? ' centered' : ''; ?>">
-        <?php foreach ( $videos as $vid ): ?>
+        <?php foreach ( $videos as $v ): ?>
         <div class="carousel-slide">
-          <div class="video-thumb" data-vid="<?php echo esc_attr($vid); ?>">
-            <img src="https://img.youtube.com/vi/<?php echo esc_attr($vid); ?>/hqdefault.jpg"
-                 alt="Video" loading="lazy">
+          <div class="video-thumb" data-vid="<?php echo esc_attr($v['id']); ?>">
+            <img src="https://img.youtube.com/vi/<?php echo esc_attr($v['id']); ?>/hqdefault.jpg"
+                 alt="<?php echo esc_attr($v['title'] ?: 'Video'); ?>" loading="lazy">
             <span class="video-play">
               <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5v14l11-7z"/></svg>
             </span>
           </div>
+          <?php if ( $v['title'] ): ?>
+            <p class="video-title"><?php echo esc_html($v['title']); ?></p>
+          <?php endif; ?>
         </div>
         <?php endforeach; ?>
       </div>
@@ -191,7 +151,7 @@ if ( $gallery_ids && is_string($gallery_ids) ) {
 }
 if ( $gallery_ids ): ?>
 <section class="section-pad section-dark section-border-top">
-  <p class="section-label">Photos</p>
+  <h2 class="section-heading">Photos</h2>
   <div class="photo-carousel" data-count="<?php echo count($gallery_ids); ?>">
     <button class="carousel-arrow carousel-prev" aria-label="Previous">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l-8 8 8 8"/></svg>
@@ -206,7 +166,7 @@ if ( $gallery_ids ): ?>
           $meta = wp_get_attachment_metadata($img_id);
           $w = isset($meta['width']) ? $meta['width'] : 0;
           $h = isset($meta['height']) ? $meta['height'] : 0;
-          $orient = ($w >= $h) ? 'landscape' : 'portrait';
+          $orient = ($w > $h) ? 'landscape' : 'portrait';
         ?>
         <div class="photo-slide">
           <div class="photo-item <?php echo $orient; ?>" data-full="<?php echo esc_url($full_url); ?>">
@@ -225,33 +185,60 @@ if ( $gallery_ids ): ?>
 </section>
 <?php endif; ?>
 
-<!-- ⑤ RELATED FILMS -->
+<!-- ⑤ MORE FILMS — upcoming + now showing, soonest first -->
 <?php
-$related = get_posts(['post_type'=>'film','posts_per_page'=>3,'post__not_in'=>[get_the_ID()],'orderby'=>'rand']);
+$related = bluebells_get_films_sorted([
+    'posts_per_page' => -1,
+    'post__not_in'   => [get_the_ID()],
+    'tax_query'      => [[
+        'taxonomy' => 'film_status',
+        'field'    => 'slug',
+        'terms'    => ['now-showing','coming-soon'],
+    ]],
+]);
+// Fallback: nếu không có phim now-showing/coming-soon, show tất cả phim khác
+if ( empty($related) ) {
+    $related = bluebells_get_films_sorted([
+        'posts_per_page' => -1,
+        'post__not_in'   => [get_the_ID()],
+    ]);
+}
+$related = array_slice($related, 0, 12);
 if($related):?>
 <section class="section-pad section-gray section-border-top">
-  <p class="section-label">More Films</p>
-  <div class="films-grid">
-    <?php foreach($related as $film): ?>
-    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
-    <article class="film-card">
-      <div class="film-poster">
-        <?php $rel_poster = get_film_poster_url($film->ID,'film-card'); if($rel_poster): ?>
-          <img src="<?php echo esc_url($rel_poster); ?>"
-               alt="<?php echo esc_attr($film->post_title); ?>" loading="lazy">
-        <?php endif; ?>
-        <div class="film-poster-overlay"></div>
-        <?php $s=get_film_status_label($film->ID); if($s): ?>
-          <span class="film-poster-label <?php echo get_film_status_class($film->ID); ?>"><?php echo esc_html($s); ?></span>
-        <?php endif; ?>
+  <h2 class="section-heading">More Films</h2>
+  <div class="films-carousel" data-count="<?php echo count($related); ?>">
+    <button class="carousel-arrow carousel-prev" aria-label="Previous">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l-8 8 8 8"/></svg>
+    </button>
+    <div class="carousel-viewport">
+      <div class="carousel-track">
+        <?php foreach($related as $film): ?>
+        <div class="carousel-slide">
+          <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
+          <article class="film-card">
+            <div class="film-poster">
+              <?php $rel_poster = get_film_poster_url($film->ID,'film-card'); if($rel_poster): ?>
+                <img src="<?php echo esc_url($rel_poster); ?>"
+                     alt="<?php echo esc_attr($film->post_title); ?>" loading="lazy">
+              <?php endif; ?>
+              <div class="film-poster-overlay"></div>
+              <?php $s=get_film_status_label($film->ID); if($s): ?>
+                <span class="film-poster-label <?php echo get_film_status_class($film->ID); ?>"><?php echo esc_html($s); ?></span>
+              <?php endif; ?>
+            </div>
+            <div class="film-info">
+              <h3 class="film-name"><?php echo esc_html($film->post_title); ?></h3>
+            </div>
+          </article>
+          </a>
+        </div>
+        <?php endforeach; ?>
       </div>
-      <div class="film-info">
-        <h3 class="film-name"><?php echo esc_html($film->post_title); ?></h3>
-        <?php $g=get_film_genre_string($film->ID); if($g): ?><p class="film-genre"><?php echo esc_html($g); ?></p><?php endif; ?>
-      </div>
-    </article>
-    </a>
-    <?php endforeach; ?>
+    </div>
+    <button class="carousel-arrow carousel-next" aria-label="Next">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M9 4l8 8-8 8"/></svg>
+    </button>
   </div>
 </section>
 <?php endif; ?>

@@ -2,7 +2,7 @@
 
 <section class="section-pad section-dark">
   <div class="slate-header">
-    <h1 class="slate-title">Bluebells Studios' Movies</h1>
+    <h1 class="section-heading">Bluebells Studios' Movies</h1>
   </div>
 
   <!-- Filter tabs -->
@@ -24,11 +24,11 @@
 
   <!-- Films grid -->
   <?php
-  $args = ['post_type'=>'film','posts_per_page'=>-1,'orderby'=>'menu_order','order'=>'ASC'];
+  $args = ['posts_per_page'=>-1];
   if($current_status) {
     $args['tax_query'] = [['taxonomy'=>'film_status','field'=>'slug','terms'=>$current_status]];
   }
-  $films = get_posts($args);
+  $films = bluebells_get_films_sorted($args);
   ?>
 
   <?php if($films): ?>
@@ -48,7 +48,6 @@
       </div>
       <div class="film-info">
         <h2 class="film-name"><?php echo esc_html($film->post_title); ?></h2>
-        <?php $g=get_film_genre_string($film->ID); if($g): ?><p class="film-genre"><?php echo esc_html($g); ?></p><?php endif; ?>
       </div>
     </article>
     </a>
@@ -64,7 +63,7 @@
   <div class="contact-inner">
     <span class="contact-label">Partner With Us</span>
     <h2 class="contact-headline">For acquisition or partnership inquiries</h2>
-    <p class="contact-sub">Contact the Bluebells Studio team for co-production, distribution rights, or brand partnerships.</p>
+    <p class="contact-sub">Contact the Bluebells Studios team for co-production, distribution rights, or brand partnerships.</p>
     <div class="contact-ctas">
       <a href="<?php echo home_url('/contact'); ?>" class="btn-primary">Contact Us</a>
     </div>
