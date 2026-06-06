@@ -1,6 +1,6 @@
 <?php
 /**
- * Bluebells Studio — header.php
+ * Bluebells Studios — header.php
  */
 ?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>

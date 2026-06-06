@@ -32,7 +32,6 @@ if ( empty($banner_films) ) {
           <?php if($trailer): ?>
             <span class="btn-primary hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>">Watch Trailer</span>
           <?php endif; ?>
-          <span class="btn-ghost">View Film</span>
         </div>
       </div>
     </a>
@@ -56,17 +55,17 @@ if ( empty($banner_films) ) {
 
 <!-- FEATURED SLATE -->
 <?php
-$featured = get_posts(['post_type'=>'film','posts_per_page'=>6,'orderby'=>'menu_order','order'=>'ASC']);
+$featured = bluebells_get_films_sorted(['posts_per_page'=>-1]);
 ?>
 <?php if ( $featured ): ?>
 <section class="section-pad section-dark section-border-top">
   <div class="slate-header">
-    <h2 class="slate-title">Featured Films</h2>
-    <a href="<?php echo get_post_type_archive_link('film'); ?>" class="view-all">View all films</a>
+    <h2 class="section-heading">Featured Movies</h2>
+    <a href="<?php echo get_post_type_archive_link('film'); ?>" class="view-all">View all movies</a>
   </div>
-  <div class="films-grid">
+  <div class="featured-movies-grid" data-batch="10">
     <?php foreach ( $featured as $i => $film ): ?>
-    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
+    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link<?php echo $i >= 10 ? ' is-hidden' : ''; ?>">
     <article class="film-card">
       <div class="film-poster">
         <?php $poster = get_film_poster_url($film->ID,'film-card'); if($poster): ?>
@@ -80,14 +79,14 @@ $featured = get_posts(['post_type'=>'film','posts_per_page'=>6,'orderby'=>'menu_
       </div>
       <div class="film-info">
         <h3 class="film-name"><?php echo esc_html($film->post_title); ?></h3>
-        <?php $genre = get_film_genre_string($film->ID); if($genre): ?>
-          <p class="film-genre"><?php echo esc_html($genre); ?></p>
-        <?php endif; ?>
       </div>
     </article>
     </a>
     <?php endforeach; ?>
   </div>
+  <?php if ( count($featured) > 10 ): ?>
+    <button type="button" class="more-movies-btn">More movies</button>
+  <?php endif; ?>
 </section>
 <?php endif; ?>
 
@@ -99,7 +98,7 @@ $ns = $now_showing ? $now_showing[0] : null;
 ?>
 <?php if ( $ns ): ?>
 <section class="section-pad section-gray section-border-top">
-  <p class="section-label">Now in Cinemas</p>
+  <h2 class="section-heading">Now in Cinemas</h2>
   <div class="showing-inner">
     <?php
     $ns_banner = get_film_banner_url($ns->ID, 'film-hero');
@@ -161,13 +160,14 @@ $ns = $now_showing ? $now_showing[0] : null;
 
 <!-- COMING SOON -->
 <?php
-$coming = get_posts(['post_type'=>'film','posts_per_page'=>4,
-    'tax_query'=>[['taxonomy'=>'film_status','field'=>'slug','terms'=>'coming-soon']]]);
+$coming = bluebells_get_films_sorted([
+    'posts_per_page'=>4,
+    'tax_query'=>[['taxonomy'=>'film_status','field'=>'slug','terms'=>'coming-soon']],
+]);
 ?>
 <?php if ( $coming ): ?>
 <section class="section-pad section-dark section-border-top">
-  <p class="section-label">Coming Soon</p>
-  <h2 style="font-size:clamp(28px,3.5vw,44px);">Upcoming Releases</h2>
+  <h2 class="section-heading">Coming Soon</h2>
   <div class="coming-grid">
     <?php foreach ( $coming as $film ): ?>
     <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
@@ -179,13 +179,10 @@ $coming = get_posts(['post_type'=>'film','posts_per_page'=>4,
         <?php endif; ?>
       </div>
       <div class="coming-info">
-        <?php $rel = get_film_meta('film_release_date',$film->ID); if($rel): ?>
+        <?php $rel = get_film_release_display($film->ID); if($rel): ?>
           <p class="coming-date"><?php echo esc_html($rel); ?></p>
         <?php endif; ?>
         <h3 class="coming-title"><?php echo esc_html($film->post_title); ?></h3>
-        <?php $genre = get_film_genre_string($film->ID); if($genre): ?>
-          <p class="coming-genre"><?php echo esc_html($genre); ?></p>
-        <?php endif; ?>
       </div>
     </article>
     </a>
@@ -196,12 +193,14 @@ $coming = get_posts(['post_type'=>'film','posts_per_page'=>4,
 
 <!-- ABOUT + CAPABILITIES -->
 <section class="section-pad section-gray section-border-top">
-  <p class="section-label">About</p>
   <div class="about-grid">
     <div class="about-text">
-      <h2 class="about-headline">A Vietnamese studio<br><em>built for the big screen.</em></h2>
+      <h2 class="section-heading">Our Story</h2>
       <p class="about-body">
-        Bluebells Studio develops original cinematic IPs and brings bold Vietnamese stories to audiences at home and across the world. From development to theatrical release — we build films that last.
+        Founded in 2022, Bluebells Studios was built on the foundation of Mockingbird Pictures, one of Vietnam's leading international film distribution companies.
+      </p>
+      <p class="about-body">
+        Our mission is to create films that celebrate Vietnamese identity, blend it with contemporary values, and bring Vietnamese stories to the global stage.
       </p>
       <a href="<?php echo home_url('/contact'); ?>" class="btn-ghost">Partner With Us</a>
     </div>
@@ -230,54 +229,31 @@ $coming = get_posts(['post_type'=>'film','posts_per_page'=>4,
   </div>
 </section>
 
-<!-- PARTNERS PREVIEW -->
+<!-- PARTNERS -->
+<?php $partners = function_exists('get_partners_sorted') ? get_partners_sorted() : []; ?>
+<?php if ( $partners ): ?>
 <section class="section-pad section-dark section-border-top">
-  <p class="section-label">Network</p>
-  <div class="partners-header">
-    <h2 class="partners-title">Our Partners</h2>
-    <a href="<?php echo home_url('/partners'); ?>" class="view-all">View all partners</a>
-  </div>
-  <div class="partners-cats">
-    <div class="partner-cat">
-      <div class="cat-icon">
-        <svg viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="1"/><path d="M3 9h18"/></svg>
-      </div>
-      <p class="cat-name">Cinema Partners</p>
-      <p class="cat-desc">Major nationwide cinema chains and independent theatres.</p>
-      <span class="cat-count">14+</span>
+  <h2 class="section-heading">Our Partners</h2>
+  <div class="partners-gallery">
+    <?php foreach ( $partners as $p ):
+      $logo_id  = get_field('partner_logo', $p->ID);
+      $logo_url = $logo_id ? wp_get_attachment_image_url($logo_id, 'medium') : '';
+      if ( !$logo_url ) continue;
+    ?>
+    <div class="partner-tile" title="<?php echo esc_attr($p->post_title); ?>">
+      <img src="<?php echo esc_url($logo_url); ?>"
+           alt="<?php echo esc_attr($p->post_title); ?>" loading="lazy">
     </div>
-    <div class="partner-cat">
-      <div class="cat-icon">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 3v9l4 4"/></svg>
-      </div>
-      <p class="cat-name">Media Partners</p>
-      <p class="cat-desc">Leading press, TV networks, and digital media platforms.</p>
-      <span class="cat-count">28+</span>
-    </div>
-    <div class="partner-cat">
-      <div class="cat-icon">
-        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M2 12h20M12 3c-2 3-3 6-3 9s1 6 3 9M12 3c2 3 3 6 3 9s-1 6-3 9"/></svg>
-      </div>
-      <p class="cat-name">International</p>
-      <p class="cat-desc">Sales agents, festival programmers, and acquisition partners.</p>
-      <span class="cat-count">8+</span>
-    </div>
-    <div class="partner-cat">
-      <div class="cat-icon">
-        <svg viewBox="0 0 24 24"><path d="M12 2l2 7h7l-5.5 4 2 7L12 16l-5.5 4 2-7L3 9h7z"/></svg>
-      </div>
-      <p class="cat-name">Brand Partners</p>
-      <p class="cat-desc">Sponsors and brand activation partners across productions.</p>
-      <span class="cat-count">12+</span>
-    </div>
+    <?php endforeach; ?>
   </div>
 </section>
+<?php endif; ?>
 
 <!-- CONTACT CTA -->
 <section class="contact-section section-gray section-border-top">
   <div class="contact-inner">
     <span class="contact-label">Work With Us</span>
-    <h2 class="contact-headline">Let's build something for the big screen.</h2>
+    <h2 class="contact-headline">Let's craft beautiful films together.</h2>
     <p class="contact-sub">Whether you're a producer, sales agent, cinema partner, or brand — we'd love to hear from you.</p>
     <div class="contact-ctas">
       <a href="<?php echo home_url('/contact'); ?>" class="btn-primary">Contact Us</a>

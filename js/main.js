@@ -175,25 +175,33 @@ document.addEventListener('DOMContentLoaded', function () {
     });
   });
 
-  // ─── VIDEO CAROUSEL ───
-  document.querySelectorAll('.video-carousel').forEach(carousel => {
+  // ─── FEATURED MOVIES: "More movies" toggle ───
+  document.querySelectorAll('.more-movies-btn').forEach(btn => {
+    const grid = btn.previousElementSibling;
+    if (!grid || !grid.classList.contains('featured-movies-grid')) return;
+    const batch = parseInt(grid.dataset.batch || '10', 10);
+    btn.addEventListener('click', () => {
+      const hidden = Array.from(grid.querySelectorAll('.film-card-link.is-hidden'));
+      hidden.slice(0, batch).forEach(el => el.classList.remove('is-hidden'));
+      if (grid.querySelector('.film-card-link.is-hidden') === null) {
+        btn.classList.add('is-done');
+      }
+    });
+  });
+
+  // ─── VIDEO CAROUSEL (with touch swipe) ───
+  function initCarousel(carousel, getSlidesPerView) {
     const track  = carousel.querySelector('.carousel-track');
     const slides = Array.from(track.querySelectorAll('.carousel-slide'));
     const prev   = carousel.querySelector('.carousel-prev');
     const next   = carousel.querySelector('.carousel-next');
     let current  = 0;
 
-    function getSlidesPerView() {
-      const w = window.innerWidth;
-      if (w <= 540) return 1;
-      if (w <= 900) return 2;
-      return 3;
-    }
-
     function update() {
       const perView  = getSlidesPerView();
       const maxIndex = Math.max(0, slides.length - perView);
       if (current > maxIndex) current = maxIndex;
+      if (current < 0) current = 0;
 
       if (slides.length <= perView) {
         track.style.transform = '';
@@ -215,7 +223,36 @@ document.addEventListener('DOMContentLoaded', function () {
     prev.addEventListener('click', () => { current--; update(); });
     next.addEventListener('click', () => { current++; update(); });
     window.addEventListener('resize', update);
+
+    // Touch swipe
+    let touchStartX = 0;
+    carousel.addEventListener('touchstart', e => { touchStartX = e.changedTouches[0].screenX; }, { passive: true });
+    carousel.addEventListener('touchend', e => {
+      const diff = touchStartX - e.changedTouches[0].screenX;
+      if (Math.abs(diff) > 40) { current += (diff > 0 ? 1 : -1); update(); }
+    }, { passive: true });
+
     update();
+  }
+
+  document.querySelectorAll('.video-carousel').forEach(carousel => {
+    initCarousel(carousel, () => {
+      const w = window.innerWidth;
+      if (w <= 540) return 1;
+      if (w <= 900) return 2;
+      return 3;
+    });
+  });
+
+  // ─── FILMS CAROUSEL (More Films on single-film page) ───
+  document.querySelectorAll('.films-carousel').forEach(carousel => {
+    initCarousel(carousel, () => {
+      const w = window.innerWidth;
+      if (w <= 540)  return 2;
+      if (w <= 900)  return 3;
+      if (w <= 1100) return 4;
+      return 5;
+    });
   });
 
   // ─── PHOTO CAROUSEL ───

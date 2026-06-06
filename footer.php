@@ -1,6 +1,6 @@
 <?php
 /**
- * Bluebells Studio — footer.php
+ * Bluebells Studios — footer.php
  */
 ?>
 
@@ -15,10 +15,10 @@
         ?>
           <img src="<?php echo esc_url($logo_url); ?>" alt="<?php bloginfo('name'); ?>" class="footer-logo-img">
         <?php else: ?>
-          Bluebells Studio
+          Bluebells Studios
         <?php endif; ?>
       </a>
-      <p class="footer-copy">© <?php echo date('Y'); ?> Bluebells Studio Co., Ltd.<br>Ho Chi Minh City, Vietnam.</p>
+      <p class="footer-copy">© <?php echo date('Y'); ?> Bluebells Studios Co., Ltd.<br>Ho Chi Minh City, Vietnam.</p>
     </div>
     <div class="footer-nav-col">
       <span class="footer-nav-label">Explore</span>
@@ -39,7 +39,7 @@
       <a href="<?php echo home_url('/terms'); ?>">Terms of Use</a>
       <a href="<?php echo home_url('/copyright'); ?>">Copyright Notice</a>
     </div>
-    <span class="footer-tagline">Film is our language.</span>
+    <span class="footer-tagline">Crafting Beautiful Films, Preserving Precious Memories</span>
   </div>
 </div>
 </footer>
