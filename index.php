@@ -25,8 +25,18 @@ if ( empty($banner_films) ) {
     <a href="<?php echo get_permalink($film->ID); ?>" class="hero-slide<?php echo $i===0?' active':''; ?>">
       <div class="hero-bg-image" style="background-image:url('<?php echo esc_url($bg); ?>')"></div>
       <div class="hero-content">
-        <?php if($status): ?>
-          <p class="hero-eyebrow"><?php echo esc_html($status); ?> — <?php echo date('Y'); ?></p>
+        <?php
+          // Only show eyebrow for now-showing / coming-soon. Other statuses hide it.
+          $status_class = get_film_status_class($film->ID);
+          $show_eyebrow = in_array($status_class, ['now-showing', 'coming-soon'], true);
+          $eyebrow_year = '';
+          if ( $is_soon ) {
+              $rel_raw = get_post_meta($film->ID, 'film_release_date', true);
+              if ( preg_match('/(\d{4})/', $rel_raw, $m) ) $eyebrow_year = $m[1];
+          }
+        ?>
+        <?php if ( $show_eyebrow && $status ): ?>
+          <p class="hero-eyebrow"><?php echo esc_html($status); ?><?php if($eyebrow_year): ?> — <?php echo esc_html($eyebrow_year); ?><?php endif; ?></p>
         <?php endif; ?>
         <h2 class="hero-title"><?php echo get_film_title_html($film->ID); ?></h2>
         <div class="hero-ctas">
@@ -56,7 +66,7 @@ if ( empty($banner_films) ) {
 
 <!-- FEATURED SLATE -->
 <?php
-$featured = bluebells_get_films_sorted(['posts_per_page'=>5]);
+$featured = bluebells_get_films_by_release(5);
 ?>
 <?php if ( $featured ): ?>
 <section class="section-pad section-gray section-border-top">
@@ -99,48 +109,49 @@ $ns = $now_showing ? $now_showing[0] : null;
   <h2 class="section-heading"><?php bbs_e('Now in Cinemas'); ?></h2>
   <div class="showing-inner">
     <?php
-    $ns_banner = get_film_banner_url($ns->ID, 'film-hero');
-    $rating = get_film_meta('film_rating',$ns->ID);
+    $ns_poster = get_film_poster_url($ns->ID, 'film-poster');
+    $rating    = get_film_meta('film_rating', $ns->ID);
+    $ns_lang   = bbs_current_lang();
     ?>
     <a href="<?php echo get_permalink($ns->ID); ?>" class="showing-visual">
-      <?php if ( $ns_banner ): ?>
-        <div class="showing-banner-wrap">
-          <img src="<?php echo esc_url($ns_banner); ?>"
+      <div class="showing-poster-wrap">
+        <?php if ( $ns_poster ): ?>
+          <img src="<?php echo esc_url($ns_poster); ?>"
                alt="<?php echo esc_attr($ns->post_title); ?>" loading="lazy">
-          <?php if($rating): ?>
-            <span class="poster-rating"><?php echo esc_html($rating); ?></span>
-          <?php endif; ?>
-        </div>
-      <?php else: ?>
-        <div class="showing-poster-wrap">
-          <?php $ns_poster = get_film_poster_url($ns->ID,'film-poster'); if($ns_poster): ?>
-            <img src="<?php echo esc_url($ns_poster); ?>"
-                 alt="<?php echo esc_attr($ns->post_title); ?>" loading="lazy">
-          <?php endif; ?>
-          <?php if($rating): ?>
-            <span class="poster-rating"><?php echo esc_html($rating); ?></span>
-          <?php endif; ?>
-        </div>
-      <?php endif; ?>
-    </a>
-    <div class="showing-details">
-      <p class="showing-eyebrow"><?php bbs_e('Now Showing'); ?></p>
-      <h2 class="showing-title"><?php echo get_film_title_html($ns->ID); ?></h2>
-      <div class="film-meta-row">
-        <?php $genre = get_film_genre_string($ns->ID); if($genre): ?>
-          <div class="meta-item"><strong>Genre</strong><?php echo esc_html($genre); ?></div>
-        <?php endif; ?>
-        <?php $runtime = get_film_meta('film_runtime',$ns->ID); if($runtime): ?>
-          <div class="meta-item"><strong>Runtime</strong><?php echo esc_html($runtime); ?> min</div>
-        <?php endif; ?>
-        <?php if($rating): ?>
-          <div class="meta-item"><strong>Rating</strong><?php echo esc_html($rating); ?></div>
-        <?php endif; ?>
-        <?php $format = get_film_meta('film_format',$ns->ID); if($format): ?>
-          <div class="meta-item"><strong>Format</strong><?php echo esc_html($format); ?></div>
         <?php endif; ?>
       </div>
-      <?php $syn = get_film_meta('film_synopsis_short',$ns->ID) ?: $ns->post_excerpt; if($syn): ?>
+    </a>
+    <div class="showing-details">
+      <h2 class="showing-title"><?php echo get_film_title_html($ns->ID); ?></h2>
+      <div class="film-meta-row">
+        <?php $director = get_film_meta('film_director',$ns->ID); if($director): ?>
+          <div class="meta-item"><strong><?php bbs_e('Director'); ?></strong><?php echo esc_html($director); ?></div>
+        <?php endif; ?>
+        <?php $genre = get_film_genre_string($ns->ID); if($genre): ?>
+          <div class="meta-item"><strong><?php bbs_e('Genre'); ?></strong><?php echo esc_html($genre); ?></div>
+        <?php endif; ?>
+        <?php $runtime = get_film_meta('film_runtime',$ns->ID); if($runtime): ?>
+          <div class="meta-item"><strong><?php bbs_e('Runtime'); ?></strong><?php echo esc_html($runtime); ?> <?php bbs_e('min'); ?></div>
+        <?php endif; ?>
+        <?php $rating_info = get_film_age_rating($ns->ID); if($rating_info): ?>
+          <div class="meta-item rating-item">
+            <strong><?php bbs_e('Rating'); ?></strong>
+            <?php if ( $rating_info['logo_url'] ): ?>
+              <img src="<?php echo esc_url($rating_info['logo_url']); ?>" alt="<?php echo esc_attr($rating_info['name']); ?>" class="rating-logo" title="<?php echo esc_attr($rating_info['desc']); ?>">
+            <?php else: ?>
+              <span class="rating-text"><?php echo esc_html($rating_info['name']); ?></span>
+            <?php endif; ?>
+          </div>
+        <?php endif; ?>
+      </div>
+      <?php
+        // Language-aware synopsis: VN site uses VN field, EN site uses EN field, fallback to other lang
+        $syn_en = get_film_meta('film_synopsis_short', $ns->ID);
+        $syn_vn = get_film_meta('film_synopsis_short_vn', $ns->ID);
+        $syn = $ns_lang === 'vi' ? ($syn_vn ?: $syn_en) : ($syn_en ?: $syn_vn);
+        $syn = $syn ?: $ns->post_excerpt;
+        if ( $syn ):
+      ?>
         <p class="showing-synopsis"><?php echo esc_html($syn); ?></p>
       <?php endif; ?>
       <div class="showing-ctas">
@@ -156,7 +167,7 @@ $ns = $now_showing ? $now_showing[0] : null;
 </section>
 <?php endif; ?>
 
-<!-- COMING SOON -->
+<?php /* Coming Soon section — currently hidden. Uncomment to restore.
 <?php
 $coming = bluebells_get_films_sorted([
     'posts_per_page'=>4,
@@ -188,6 +199,7 @@ $coming = bluebells_get_films_sorted([
   </div>
 </section>
 <?php endif; ?>
+*/ ?>
 
 <!-- ABOUT + CAPABILITIES -->
 <section class="section-pad section-dark section-border-top">

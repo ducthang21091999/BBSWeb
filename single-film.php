@@ -68,9 +68,6 @@ $film_logo = get_film_logo_url(null,'large');
     <?php if($poster_url): ?>
     <div class="film-overview-poster">
       <img src="<?php echo esc_url($poster_url); ?>" alt="<?php the_title_attribute(); ?>">
-      <?php if($rating): ?>
-        <span class="film-overview-rating"><?php echo esc_html($rating); ?></span>
-      <?php endif; ?>
     </div>
     <?php endif; ?>
 
@@ -81,9 +78,6 @@ $film_logo = get_film_logo_url(null,'large');
         <p class="film-overview-vn"><?php echo esc_html($sub_title); ?></p>
       <?php endif; ?>
       <div class="film-overview-meta">
-        <?php if($rating): ?>
-          <div class="meta-row"><span class="meta-label"><?php bbs_e('Rating'); ?></span><span class="meta-value"><?php echo esc_html($rating); ?></span></div>
-        <?php endif; ?>
         <?php if($runtime): ?>
           <div class="meta-row"><span class="meta-label"><?php bbs_e('Runtime'); ?></span><span class="meta-value"><?php echo esc_html($runtime); ?> <?php bbs_e('min'); ?></span></div>
         <?php endif; ?>
@@ -93,14 +87,20 @@ $film_logo = get_film_logo_url(null,'large');
         <?php if($genre): ?>
           <div class="meta-row"><span class="meta-label"><?php bbs_e('Genre'); ?></span><span class="meta-value"><?php echo esc_html($genre); ?></span></div>
         <?php endif; ?>
+        <?php $rating_info = get_film_age_rating(); if($rating_info): ?>
+          <div class="meta-row">
+            <span class="meta-label"><?php bbs_e('Rating'); ?></span>
+            <span class="meta-value">
+              <?php if ( $rating_info['logo_url'] ): ?>
+                <img src="<?php echo esc_url($rating_info['logo_url']); ?>" alt="<?php echo esc_attr($rating_info['name']); ?>" class="rating-logo" title="<?php echo esc_attr($rating_info['desc']); ?>">
+              <?php else: ?>
+                <?php echo esc_html($rating_info['name']); ?>
+              <?php endif; ?>
+            </span>
+          </div>
+        <?php endif; ?>
       </div>
     </div>
-
-    <?php if($syn_short || $syn_full || $logline): ?>
-    <div class="film-overview-synopsis">
-      <?php echo wp_kses_post($syn_full ?: $syn_short ?: $logline); ?>
-    </div>
-    <?php endif; ?>
 
     <div class="film-overview-crew">
       <?php if($director): ?>
@@ -113,10 +113,16 @@ $film_logo = get_film_logo_url(null,'large');
       <div class="crew-block"><strong><?php bbs_e('Produced By'); ?></strong><span><?php echo esc_html($producer); ?></span></div>
       <?php endif; ?>
       <?php if($cast): ?>
-      <div class="crew-block"><strong><?php bbs_e('Cast'); ?></strong><span><?php echo esc_html($cast); ?></span></div>
+      <div class="crew-block crew-cast"><strong><?php bbs_e('Cast'); ?></strong><span><?php echo esc_html($cast); ?></span></div>
       <?php endif; ?>
     </div>
     </div><!-- /.film-overview-info -->
+
+    <?php if($syn_short || $syn_full || $logline): ?>
+    <div class="film-overview-synopsis">
+      <?php echo wp_kses_post($syn_full ?: $syn_short ?: $logline); ?>
+    </div>
+    <?php endif; ?>
 
   </div>
 </section>
@@ -200,21 +206,26 @@ if ( $gallery_ids ): ?>
 
 <!-- ⑤ MORE FILMS — upcoming + now showing, soonest first -->
 <?php
+$current_id = get_the_ID();
+// Priority: now-showing + coming-soon first
 $related = bluebells_get_films_sorted([
     'posts_per_page' => -1,
-    'post__not_in'   => [get_the_ID()],
+    'post__not_in'   => [$current_id],
     'tax_query'      => [[
         'taxonomy' => 'film_status',
         'field'    => 'slug',
         'terms'    => ['now-showing','coming-soon'],
     ]],
 ]);
-// Fallback: nếu không có phim now-showing/coming-soon, show tất cả phim khác
-if ( empty($related) ) {
-    $related = bluebells_get_films_sorted([
+// If fewer than 5, fill with other films
+if ( count($related) < 5 ) {
+    $exclude = array_map(fn($f) => $f->ID, $related);
+    $exclude[] = $current_id;
+    $more = bluebells_get_films_sorted([
         'posts_per_page' => -1,
-        'post__not_in'   => [get_the_ID()],
+        'post__not_in'   => $exclude,
     ]);
+    $related = array_merge($related, $more);
 }
 $related = array_slice($related, 0, 12);
 if($related):?>

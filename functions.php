@@ -544,6 +544,142 @@ function bluebells_register_taxonomies() {
 }
 add_action( 'init', 'bluebells_register_taxonomies' );
 
+// ─── MOVIE AGE RATING (Vietnam classification system) ───
+function bluebells_register_film_age_rating() {
+    register_taxonomy('film_age_rating', 'film', [
+        'labels' => [
+            'name'          => 'Phân Loại Độ Tuổi',
+            'singular_name' => 'Phân Loại',
+            'menu_name'     => 'Phân loại tuổi',
+            'edit_item'     => 'Sửa phân loại',
+            'add_new_item'  => 'Thêm phân loại',
+        ],
+        'hierarchical' => false,
+        'show_in_rest' => false,
+        'show_ui'      => true,
+        'show_in_menu' => 'edit.php?post_type=film',
+        'public'       => false,
+        'rewrite'      => false,
+        'meta_box_cb'  => false,  // hide WP meta box — admin uses ACF radio in film edit
+    ]);
+}
+add_action( 'init', 'bluebells_register_film_age_rating' );
+
+// Auto-create the 6 Vietnam age rating terms on first load
+function bluebells_seed_age_ratings() {
+    $ratings = [
+        'P'   => ['name'=>'P',   'desc'=>'Phổ biến — Phù hợp mọi lứa tuổi.'],
+        'K'   => ['name'=>'K',   'desc'=>'Khán giả dưới 13 tuổi xem cùng người lớn.'],
+        'T13' => ['name'=>'T13', 'desc'=>'Phim dành cho khán giả từ 13 tuổi trở lên.'],
+        'T16' => ['name'=>'T16', 'desc'=>'Phim dành cho khán giả từ 16 tuổi trở lên.'],
+        'T18' => ['name'=>'T18', 'desc'=>'Phim dành cho khán giả từ 18 tuổi trở lên.'],
+        'C'   => ['name'=>'C',   'desc'=>'Phim không được phổ biến.'],
+    ];
+    foreach ( $ratings as $slug => $info ) {
+        $slug_lc = strtolower($slug);
+        if ( ! term_exists($slug_lc, 'film_age_rating') ) {
+            wp_insert_term($info['name'], 'film_age_rating', [
+                'slug'        => $slug_lc,
+                'description' => $info['desc'],
+            ]);
+        }
+    }
+}
+add_action( 'init', 'bluebells_seed_age_ratings', 20 );
+
+// ACF: bilingual name field for film_genre terms (term name = VN primary, ACF holds EN)
+function bluebells_register_genre_term_fields() {
+    if ( ! function_exists('acf_add_local_field_group') ) return;
+    acf_add_local_field_group([
+        'key'      => 'group_film_genre_term',
+        'title'    => 'Bản dịch',
+        'location' => [[['param'=>'taxonomy','operator'=>'==','value'=>'film_genre']]],
+        'fields'   => [
+            ['key'=>'field_genre_name_en','label'=>'Tên tiếng Anh','name'=>'genre_name_en','type'=>'text',
+             'instructions'=>'Tên thể loại bằng tiếng Anh. Vd: term name "Kinh Dị" → field "Horror".',
+             'placeholder'=>'vd: Horror'],
+        ],
+    ]);
+}
+add_action( 'acf/init', 'bluebells_register_genre_term_fields' );
+
+// One-time migration: convert existing English genre terms to Vietnamese + store EN in ACF field
+function bluebells_migrate_genres() {
+    if ( get_option('bluebells_genres_migrated') ) return;
+    if ( ! function_exists('update_field') ) return;
+
+    $map = [
+        'horror'       => ['vi' => 'Kinh Dị',     'en' => 'Horror'],
+        'spirituality' => ['vi' => 'Tâm Linh',    'en' => 'Spirituality'],
+        'family'       => ['vi' => 'Gia Đình',    'en' => 'Family'],
+        'romance'      => ['vi' => 'Lãng Mạn',    'en' => 'Romance'],
+        'action'       => ['vi' => 'Hành Động',   'en' => 'Action'],
+        'comedy'       => ['vi' => 'Hài',          'en' => 'Comedy'],
+        'drama'        => ['vi' => 'Tâm Lý',       'en' => 'Drama'],
+        'thriller'     => ['vi' => 'Giật Gân',     'en' => 'Thriller'],
+        'adventure'    => ['vi' => 'Phiêu Lưu',    'en' => 'Adventure'],
+        'sci-fi'       => ['vi' => 'Viễn Tưởng',   'en' => 'Sci-Fi'],
+        'fantasy'      => ['vi' => 'Kỳ Ảo',        'en' => 'Fantasy'],
+        'documentary'  => ['vi' => 'Tài Liệu',     'en' => 'Documentary'],
+        'animation'    => ['vi' => 'Hoạt Hình',    'en' => 'Animation'],
+        'mystery'      => ['vi' => 'Bí Ẩn',        'en' => 'Mystery'],
+        'crime'        => ['vi' => 'Tội Phạm',     'en' => 'Crime'],
+        'historical'   => ['vi' => 'Lịch Sử',      'en' => 'Historical'],
+        'musical'      => ['vi' => 'Âm Nhạc',      'en' => 'Musical'],
+        'war'          => ['vi' => 'Chiến Tranh',  'en' => 'War'],
+    ];
+
+    foreach ( $map as $slug => $names ) {
+        $term = get_term_by('slug', $slug, 'film_genre');
+        if ( $term && !is_wp_error($term) ) {
+            wp_update_term($term->term_id, 'film_genre', ['name' => $names['vi']]);
+            update_field('genre_name_en', $names['en'], 'film_genre_' . $term->term_id);
+        }
+    }
+    update_option('bluebells_genres_migrated', 1);
+}
+add_action( 'acf/init', 'bluebells_migrate_genres', 99 );
+
+// ACF: Image upload field for each age rating term (admin uploads logo)
+function bluebells_register_age_rating_term_fields() {
+    if ( ! function_exists('acf_add_local_field_group') ) return;
+    acf_add_local_field_group([
+        'key'      => 'group_film_age_rating_term',
+        'title'    => 'Logo phân loại',
+        'location' => [[['param'=>'taxonomy','operator'=>'==','value'=>'film_age_rating']]],
+        'fields'   => [
+            ['key'=>'field_rating_logo','label'=>'Logo','name'=>'rating_logo','type'=>'image',
+             'instructions'=>'Upload logo phân loại (PNG trong suốt khuyến nghị, ~200×200px).',
+             'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
+        ],
+    ]);
+}
+add_action( 'acf/init', 'bluebells_register_age_rating_term_fields' );
+
+// Helper: get age rating info for a film — returns ['name'=>'T16', 'logo_url'=>'...', 'desc'=>'...'] or null
+function get_film_age_rating( $post_id = null ) {
+    if ( !$post_id ) $post_id = get_the_ID();
+    $terms = get_the_terms($post_id, 'film_age_rating');
+    if ( !$terms || is_wp_error($terms) ) {
+        // Fallback: try old text field film_rating
+        $text = get_post_meta($post_id, 'film_rating', true);
+        if ( $text ) {
+            $term = get_term_by('slug', strtolower($text), 'film_age_rating');
+            if ( $term && !is_wp_error($term) ) $terms = [$term];
+        }
+    }
+    if ( !$terms || is_wp_error($terms) ) return null;
+    $term = $terms[0];
+    $logo_id = get_field('rating_logo', 'film_age_rating_' . $term->term_id);
+    $logo_url = $logo_id ? wp_get_attachment_image_url((int)$logo_id, 'thumbnail') : '';
+    return [
+        'name'     => $term->name,
+        'slug'     => $term->slug,
+        'logo_url' => $logo_url,
+        'desc'     => $term->description,
+    ];
+}
+
 // Hide WordPress's default taxonomy meta box for film_genre — ACF multi_select handles it
 add_action('admin_menu', function() {
     remove_meta_box('film_genrediv', 'film', 'side');  // hierarchical → uses *div suffix
@@ -573,8 +709,10 @@ function bluebells_register_acf_fields() {
              'taxonomy'=>'film_genre','add_term'=>1,'save_terms'=>1,'load_terms'=>1,
              'return_format'=>'id','field_type'=>'multi_select','wrapper'=>['width'=>'50'],
              'instructions'=>'Chọn thể loại theo thứ tự ưu tiên. Cái nào chọn trước sẽ hiển thị trước trên web.'],
-            ['key'=>'field_film_rating','label'=>'Rating','name'=>'film_rating','type'=>'text',
-             'instructions'=>'vd: T18, P, K','wrapper'=>['width'=>'25'],'placeholder'=>'T18'],
+            ['key'=>'field_film_rating','label'=>'Phân Loại Độ Tuổi','name'=>'film_rating_tax','type'=>'taxonomy',
+             'taxonomy'=>'film_age_rating','add_term'=>0,'save_terms'=>1,'load_terms'=>1,
+             'return_format'=>'object','field_type'=>'radio','wrapper'=>['width'=>'25'],
+             'allow_null'=>1,'instructions'=>'Theo phân loại của Cục Điện Ảnh VN.'],
             ['key'=>'field_film_runtime','label'=>'Runtime','name'=>'film_runtime','type'=>'text',
              'instructions'=>'Số phút','wrapper'=>['width'=>'25'],'placeholder'=>'112','append'=>'phút'],
             ['key'=>'field_film_release_date','label'=>'Ngày chiếu','name'=>'film_release_date','type'=>'text',
@@ -906,6 +1044,50 @@ function get_film_trailer_url( $post_id = null ) {
     return $vi ?: $en;
 }
 
+// Normalize release date for comparison (Ymd integer; missing date = 0)
+function bluebells_normalize_release_for_sort( $post_id ) {
+    $val = trim((string) get_post_meta($post_id, 'film_release_date', true));
+    if ( !$val ) return 0;
+    // Ymd legacy "20260824"
+    if ( preg_match('/^(\d{8})$/', $val, $m) ) return (int)$m[1];
+    // DD/MM/YYYY
+    if ( preg_match('/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/', $val, $m) )
+        return (int)sprintf('%04d%02d%02d', $m[3], $m[2], $m[1]);
+    // MM/YYYY → assume 1st of month
+    if ( preg_match('/^(\d{1,2})\/(\d{4})$/', $val, $m) )
+        return (int)sprintf('%04d%02d01', $m[2], $m[1]);
+    // YYYY only → assume Jan 1
+    if ( preg_match('/^(\d{4})$/', $val, $m) ) return (int)($m[1] . '0101');
+    return 0;
+}
+
+// Get films: Now Showing first (by release DESC), then other films (by release DESC).
+function bluebells_get_films_by_release( $limit = 5, $extra_args = [] ) {
+    $args = array_merge([
+        'post_type'      => 'film',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+    ], $extra_args);
+    $films = get_posts($args);
+
+    usort($films, function($a, $b) {
+        // Priority 1: now-showing always comes first
+        $a_ns = get_film_status_class($a->ID) === 'now-showing' ? 1 : 0;
+        $b_ns = get_film_status_class($b->ID) === 'now-showing' ? 1 : 0;
+        if ( $a_ns !== $b_ns ) return $b_ns - $a_ns;
+
+        // Priority 2: within same group, DESC by release date
+        $sa = bluebells_normalize_release_for_sort($a->ID);
+        $sb = bluebells_normalize_release_for_sort($b->ID);
+        if ( $sa !== $sb ) return $sb - $sa;
+
+        // Tie-break: newest added
+        return strtotime($b->post_date) - strtotime($a->post_date);
+    });
+
+    return array_slice($films, 0, $limit);
+}
+
 // Get films sorted by the smart rule above
 function bluebells_get_films_sorted( $extra_args = [] ) {
     $args = array_merge([
@@ -928,20 +1110,31 @@ function get_film_status_label( $post_id = null ) {
 // Helper: film genre string
 function get_film_genre_string( $post_id = null ) {
     if ( !$post_id ) $post_id = get_the_ID();
+    $lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+
+    // Resolve a term's display name based on current lang (en uses ACF genre_name_en, fallback VN name)
+    $get_name = function($term) use ($lang) {
+        if ( $lang === 'en' ) {
+            $en = function_exists('get_field') ? get_field('genre_name_en', 'film_genre_' . $term->term_id) : '';
+            if ( $en ) return $en;
+        }
+        return $term->name;
+    };
+
     // Prefer ACF-stored ordered list (multi_select preserves selection order)
     $ids = get_field('film_genre_tax', $post_id);
     if ( $ids && is_array($ids) ) {
         $names = [];
         foreach ( $ids as $id ) {
             $t = get_term((int)$id, 'film_genre');
-            if ( $t && !is_wp_error($t) ) $names[] = $t->name;
+            if ( $t && !is_wp_error($t) ) $names[] = $get_name($t);
         }
         if ( $names ) return implode(' · ', $names);
     }
     // Fallback to default term order
     $terms = get_the_terms( $post_id, 'film_genre' );
     if ( !$terms || is_wp_error($terms) ) return '';
-    return implode(' · ', array_map(fn($t)=>$t->name, $terms));
+    return implode(' · ', array_map($get_name, $terms));
 }
 
 // Helper: status CSS class

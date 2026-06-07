@@ -42,6 +42,7 @@ return [
         'Cast'              => 'Diễn Viên',
 
         // Meta labels (single-film)
+        'Director'          => 'Đạo Diễn',
         'Rating'            => 'Phân Loại Độ Tuổi',
         'Runtime'           => 'Thời Lượng',
         'Release Date'      => 'Ngày Khởi Chiếu',
