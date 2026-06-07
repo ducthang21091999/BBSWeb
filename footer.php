@@ -47,7 +47,7 @@ $social = [
         </a>
       </div>
 
-      <p class="footer-copy">© 2017 Bluebells Studios Co., Ltd. All rights reserved.</p>
+      <p class="footer-copy">© 2022 Bluebells Studios Co., Ltd. All rights reserved.</p>
     </div>
 
     <!-- RIGHT: Contact info -->
