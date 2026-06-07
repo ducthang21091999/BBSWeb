@@ -14,6 +14,7 @@ $logline   = get_film_meta('film_logline');
 $syn_short = get_film_meta('film_synopsis_short');
 $syn_full  = get_film_meta('film_synopsis_full');
 $director  = get_film_meta('film_director');
+$writer    = get_film_meta('film_writer');
 $producer  = get_film_meta('film_producer');
 $cast      = get_film_meta('film_cast');
 $vn_title  = get_film_meta('film_vn_title');
@@ -60,6 +61,7 @@ $film_logo = get_film_logo_url(null,'large');
     </div>
     <?php endif; ?>
 
+    <div class="film-overview-info">
     <div class="film-overview-meta-col">
       <h2 class="film-overview-title"><?php the_title(); ?></h2>
       <?php if($vn_title): ?>
@@ -78,12 +80,6 @@ $film_logo = get_film_logo_url(null,'large');
         <?php if($genre): ?>
           <div class="meta-row"><span class="meta-label">Genre</span><span class="meta-value"><?php echo esc_html($genre); ?></span></div>
         <?php endif; ?>
-        <?php if($language): ?>
-          <div class="meta-row"><span class="meta-label">Language</span><span class="meta-value"><?php echo esc_html($language); ?></span></div>
-        <?php endif; ?>
-        <?php if($format): ?>
-          <div class="meta-row"><span class="meta-label">Format</span><span class="meta-value"><?php echo esc_html($format); ?></span></div>
-        <?php endif; ?>
       </div>
     </div>
 
@@ -97,6 +93,9 @@ $film_logo = get_film_logo_url(null,'large');
       <?php if($director): ?>
       <div class="crew-block"><strong>Directed By</strong><span><?php echo esc_html($director); ?></span></div>
       <?php endif; ?>
+      <?php if($writer): ?>
+      <div class="crew-block"><strong>Written By</strong><span><?php echo esc_html($writer); ?></span></div>
+      <?php endif; ?>
       <?php if($producer): ?>
       <div class="crew-block"><strong>Produced By</strong><span><?php echo esc_html($producer); ?></span></div>
       <?php endif; ?>
@@ -104,6 +103,7 @@ $film_logo = get_film_logo_url(null,'large');
       <div class="crew-block"><strong>Cast</strong><span><?php echo esc_html($cast); ?></span></div>
       <?php endif; ?>
     </div>
+    </div><!-- /.film-overview-info -->
 
   </div>
 </section>

@@ -237,12 +237,17 @@ $coming = bluebells_get_films_sorted([
     <?php foreach ( $partners as $p ):
       $logo_id  = get_field('partner_logo', $p->ID);
       $logo_url = $logo_id ? wp_get_attachment_image_url($logo_id, 'medium') : '';
+      $link     = get_field('partner_link', $p->ID);
       if ( !$logo_url ) continue;
+      $tag = $link ? 'a' : 'div';
+      $attr = $link
+        ? ' href="' . esc_url($link) . '" target="_blank" rel="noopener"'
+        : '';
     ?>
-    <div class="partner-tile" title="<?php echo esc_attr($p->post_title); ?>">
+    <<?php echo $tag; ?> class="partner-tile<?php echo $link ? ' has-link' : ''; ?>"<?php echo $attr; ?> title="<?php echo esc_attr($p->post_title); ?>">
       <img src="<?php echo esc_url($logo_url); ?>"
            alt="<?php echo esc_attr($p->post_title); ?>" loading="lazy">
-    </div>
+    </<?php echo $tag; ?>>
     <?php endforeach; ?>
   </div>
 </section>

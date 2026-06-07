@@ -39,6 +39,9 @@ function bluebells_register_contact_settings() {
     register_setting('bluebells_contact', 'bluebells_contact_phone', ['sanitize_callback' => 'sanitize_text_field']);
     register_setting('bluebells_contact', 'bluebells_contact_address', ['sanitize_callback' => 'sanitize_text_field']);
     register_setting('bluebells_contact', 'bluebells_contact_form_to', ['sanitize_callback' => 'sanitize_email']);
+    register_setting('bluebells_contact', 'bluebells_social_facebook', ['sanitize_callback' => 'esc_url_raw']);
+    register_setting('bluebells_contact', 'bluebells_social_tiktok',   ['sanitize_callback' => 'esc_url_raw']);
+    register_setting('bluebells_contact', 'bluebells_social_youtube',  ['sanitize_callback' => 'esc_url_raw']);
 }
 add_action( 'admin_init', 'bluebells_register_contact_settings' );
 
@@ -78,6 +81,28 @@ function bluebells_contact_settings_page() {
                         value="<?php echo esc_attr(get_option('bluebells_contact_form_to')); ?>"
                         class="regular-text" placeholder="inbox@bluebells.vn">
                         <p class="description">Email từ form Contact khách gửi sẽ được forward về đây. Nếu trống → dùng email Admin của site.</p>
+                    </td>
+                </tr>
+                <tr><th colspan="2"><h2 style="margin-top:24px;">Social Links</h2></th></tr>
+                <tr>
+                    <th scope="row"><label for="bluebells_social_facebook">Facebook URL</label></th>
+                    <td><input type="url" name="bluebells_social_facebook" id="bluebells_social_facebook"
+                        value="<?php echo esc_attr(get_option('bluebells_social_facebook')); ?>"
+                        class="regular-text" placeholder="https://facebook.com/bluebells...">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="bluebells_social_tiktok">TikTok URL</label></th>
+                    <td><input type="url" name="bluebells_social_tiktok" id="bluebells_social_tiktok"
+                        value="<?php echo esc_attr(get_option('bluebells_social_tiktok')); ?>"
+                        class="regular-text" placeholder="https://tiktok.com/@bluebells...">
+                    </td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="bluebells_social_youtube">YouTube URL</label></th>
+                    <td><input type="url" name="bluebells_social_youtube" id="bluebells_social_youtube"
+                        value="<?php echo esc_attr(get_option('bluebells_social_youtube')); ?>"
+                        class="regular-text" placeholder="https://youtube.com/@bluebells...">
                     </td>
                 </tr>
             </table>
@@ -141,6 +166,8 @@ function bluebells_setup() {
     add_image_size( 'film-poster', 600, 900, true );
     add_image_size( 'film-hero', 1920, 1080, true );
     add_image_size( 'film-card', 800, 1200, true );
+    add_image_size( 'film-banner-preview', 320, 180, true );   // 16:9 for ACF admin preview
+    add_image_size( 'film-poster-preview', 120, 180, true );   // 2:3 for ACF admin preview
     register_nav_menus(['primary'=>'Primary Navigation','footer'=>'Footer Navigation']);
 }
 add_action( 'after_setup_theme', 'bluebells_setup' );
@@ -175,9 +202,9 @@ function bluebells_register_films() {
         'public'       => true,
         'has_archive'  => true,
         'rewrite'      => ['slug'=>'films'],
-        'supports'     => ['title','editor','thumbnail','excerpt'],
+        'supports'     => ['title','thumbnail'],
         'menu_icon'    => 'dashicons-video-alt2',
-        'show_in_rest' => true,
+        'show_in_rest' => false,   // Force Classic Editor — ACF Free renders meta boxes more reliably
     ]);
 }
 add_action( 'init', 'bluebells_register_films' );
@@ -194,6 +221,12 @@ function bluebells_register_taxonomies() {
     ]);
 }
 add_action( 'init', 'bluebells_register_taxonomies' );
+
+// Hide WordPress's default taxonomy meta box for film_genre — ACF multi_select handles it
+add_action('admin_menu', function() {
+    remove_meta_box('film_genrediv', 'film', 'side');  // hierarchical → uses *div suffix
+    remove_meta_box('tagsdiv-film_genre', 'film', 'side');  // non-hierarchical fallback
+});
 
 // ─── ACF FIELD GROUP (registered via PHP — no sync needed) ───
 function bluebells_register_acf_fields() {
@@ -215,7 +248,8 @@ function bluebells_register_acf_fields() {
              'instructions'=>'Tên phim bằng tiếng Việt.','wrapper'=>['width'=>'50'],'placeholder'=>'vd: Phí Phồng'],
             ['key'=>'field_film_genre','label'=>'Thể loại','name'=>'film_genre_tax','type'=>'taxonomy',
              'taxonomy'=>'film_genre','add_term'=>1,'save_terms'=>1,'load_terms'=>1,
-             'return_format'=>'object','field_type'=>'checkbox','wrapper'=>['width'=>'50']],
+             'return_format'=>'id','field_type'=>'multi_select','wrapper'=>['width'=>'50'],
+             'instructions'=>'Chọn thể loại theo thứ tự ưu tiên. Cái nào chọn trước sẽ hiển thị trước trên web.'],
             ['key'=>'field_film_rating','label'=>'Rating','name'=>'film_rating','type'=>'text',
              'instructions'=>'vd: T18, P, K','wrapper'=>['width'=>'25'],'placeholder'=>'T18'],
             ['key'=>'field_film_runtime','label'=>'Runtime','name'=>'film_runtime','type'=>'text',
@@ -235,14 +269,14 @@ function bluebells_register_acf_fields() {
              'type'=>'true_false','instructions'=>'Bật để phim xuất hiện trong slideshow banner ở trang chủ.',
              'default_value'=>0,'ui'=>1,'ui_on_text'=>'Có','ui_off_text'=>'Không'],
             ['key'=>'field_film_poster','label'=>'Poster','name'=>'film_poster','type'=>'image',
-             'instructions'=>'Portrait (2:3). Min 600×900px.','wrapper'=>['width'=>'50'],
-             'return_format'=>'id','library'=>'all','preview_size'=>'medium'],
+             'instructions'=>'Portrait (2:3). Min 600×900px.','wrapper'=>['width'=>'33'],
+             'return_format'=>'id','library'=>'all','preview_size'=>'film-poster-preview'],
             ['key'=>'field_film_banner','label'=>'Banner','name'=>'film_banner','type'=>'image',
-             'instructions'=>'Landscape hero (16:9). Min 1920×1080px.','wrapper'=>['width'=>'50'],
-             'return_format'=>'id','library'=>'all','preview_size'=>'medium'],
+             'instructions'=>'Landscape hero (16:9). Min 1920×1080px.','wrapper'=>['width'=>'33'],
+             'return_format'=>'id','library'=>'all','preview_size'=>'film-banner-preview'],
             ['key'=>'field_film_logo','label'=>'Logo phim','name'=>'film_logo','type'=>'image',
-             'instructions'=>'Logo/title treatment (PNG trong suốt).','wrapper'=>['width'=>'50'],
-             'return_format'=>'id','library'=>'all','preview_size'=>'medium'],
+             'instructions'=>'Logo/title treatment (PNG trong suốt).','wrapper'=>['width'=>'34'],
+             'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
             ['key'=>'field_film_trailer','label'=>'Trailer URL','name'=>'film_trailer','type'=>'url',
              'instructions'=>'YouTube hoặc Vimeo URL.','wrapper'=>['width'=>'50'],
              'placeholder'=>'https://youtube.com/watch?v=...'],
@@ -260,6 +294,7 @@ function bluebells_register_acf_fields() {
             // ── Tab: Đoàn phim ──
             ['key'=>'field_tab_crew','label'=>'Đoàn phim','type'=>'tab','placement'=>'top'],
             ['key'=>'field_film_director','label'=>'Đạo diễn','name'=>'film_director','type'=>'text','wrapper'=>['width'=>'50']],
+            ['key'=>'field_film_writer','label'=>'Biên kịch','name'=>'film_writer','type'=>'text','wrapper'=>['width'=>'50']],
             ['key'=>'field_film_producer','label'=>'Nhà sản xuất','name'=>'film_producer','type'=>'text','wrapper'=>['width'=>'50']],
             ['key'=>'field_film_cast','label'=>'Diễn viên','name'=>'film_cast','type'=>'textarea','rows'=>3,'new_lines'=>'br'],
 
@@ -274,6 +309,7 @@ function bluebells_register_acf_fields() {
     ]);
 }
 add_action( 'acf/init', 'bluebells_register_acf_fields' );
+
 
 // ─── ACF FIELD GROUP for Partner CPT ───
 function bluebells_register_partner_fields() {
@@ -292,7 +328,10 @@ function bluebells_register_partner_fields() {
              'default_value'=>10,'min'=>0,'step'=>1],
             ['key'=>'field_partner_logo','label'=>'Logo','name'=>'partner_logo','type'=>'image',
              'instructions'=>'Logo của partner. PNG trong suốt khuyến nghị. Min 300×300px.',
-             'wrapper'=>['width'=>'75'],'return_format'=>'id','library'=>'all','preview_size'=>'medium'],
+             'wrapper'=>['width'=>'45'],'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
+            ['key'=>'field_partner_link','label'=>'Link website','name'=>'partner_link','type'=>'url',
+             'instructions'=>'Khi click vào logo sẽ mở link này. Để trống = không click được.',
+             'wrapper'=>['width'=>'30'],'placeholder'=>'https://...'],
         ],
     ]);
 }
@@ -476,6 +515,17 @@ function get_film_status_label( $post_id = null ) {
 // Helper: film genre string
 function get_film_genre_string( $post_id = null ) {
     if ( !$post_id ) $post_id = get_the_ID();
+    // Prefer ACF-stored ordered list (multi_select preserves selection order)
+    $ids = get_field('film_genre_tax', $post_id);
+    if ( $ids && is_array($ids) ) {
+        $names = [];
+        foreach ( $ids as $id ) {
+            $t = get_term((int)$id, 'film_genre');
+            if ( $t && !is_wp_error($t) ) $names[] = $t->name;
+        }
+        if ( $names ) return implode(' · ', $names);
+    }
+    // Fallback to default term order
     $terms = get_the_terms( $post_id, 'film_genre' );
     if ( !$terms || is_wp_error($terms) ) return '';
     return implode(' · ', array_map(fn($t)=>$t->name, $terms));
