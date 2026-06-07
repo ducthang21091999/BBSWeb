@@ -42,8 +42,12 @@
                alt="<?php echo esc_attr($film->post_title); ?>" loading="lazy">
         <?php endif; ?>
         <div class="film-poster-overlay"></div>
-        <?php $s=get_film_status_label($film->ID); if($s): ?>
-          <span class="film-poster-label <?php echo get_film_status_class($film->ID); ?>"><?php echo esc_html($s); ?></span>
+        <?php
+          $s = get_film_status_label($film->ID);
+          $sc = get_film_status_class($film->ID);
+          if ( $s && in_array($sc, ['now-showing','coming-soon'], true) ):
+        ?>
+          <span class="film-poster-label <?php echo $sc; ?>"><?php echo esc_html($s); ?></span>
         <?php endif; ?>
       </div>
       <div class="film-info">

@@ -32,7 +32,12 @@ if ( empty($banner_films) ) {
           $eyebrow_year = '';
           if ( $is_soon ) {
               $rel_raw = get_post_meta($film->ID, 'film_release_date', true);
-              if ( preg_match('/(\d{4})/', $rel_raw, $m) ) $eyebrow_year = $m[1];
+              if ( preg_match('/(\d{4})/', $rel_raw, $m) ) {
+                  $eyebrow_year = $m[1];
+              } else {
+                  // No release date: estimate year as today + 3 months
+                  $eyebrow_year = date('Y', strtotime('+3 months'));
+              }
           }
         ?>
         <?php if ( $show_eyebrow && $status ): ?>
@@ -84,8 +89,12 @@ $featured = bluebells_get_films_by_release(5);
                alt="<?php echo esc_attr($film->post_title); ?>" loading="<?php echo $i===0?'eager':'lazy'; ?>">
         <?php endif; ?>
         <div class="film-poster-overlay"></div>
-        <?php $status = get_film_status_label($film->ID); if($status): ?>
-          <span class="film-poster-label <?php echo get_film_status_class($film->ID); ?>"><?php echo esc_html($status); ?></span>
+        <?php
+          $status = get_film_status_label($film->ID);
+          $status_class = get_film_status_class($film->ID);
+          if ( $status && in_array($status_class, ['now-showing','coming-soon'], true) ):
+        ?>
+          <span class="film-poster-label <?php echo $status_class; ?>"><?php echo esc_html($status); ?></span>
         <?php endif; ?>
       </div>
       <div class="film-info">
