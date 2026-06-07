@@ -1,23 +1,36 @@
 <?php get_header(); the_post(); ?>
 
 <?php
-$trailer   = get_film_meta('film_trailer');
-$ticket    = get_film_meta('film_ticket_link');
-$status    = get_film_status_label();
-$genre     = get_film_genre_string();
-$runtime   = get_film_meta('film_runtime');
-$rating    = get_film_meta('film_rating');
-$release   = get_film_release_display();
-$format    = get_film_meta('film_format');
-$language  = get_film_meta('film_language');
-$logline   = get_film_meta('film_logline');
-$syn_short = get_film_meta('film_synopsis_short');
-$syn_full  = get_film_meta('film_synopsis_full');
+$lang        = bbs_current_lang();  // 'vi' or 'en'
+$trailer     = get_film_trailer_url();
+$ticket      = get_film_meta('film_ticket_link');
+$status      = get_film_status_label();
+$genre       = get_film_genre_string();
+$runtime     = get_film_meta('film_runtime');
+$rating      = get_film_meta('film_rating');
+$release     = get_film_release_label();
+$format      = get_film_meta('film_format');
+$language    = get_film_meta('film_language');
+$logline     = get_film_meta('film_logline');
+
+// Dual-language synopsis — pick by current lang, fallback to whichever exists
+$syn_full_en  = get_film_meta('film_synopsis_full');
+$syn_full_vn  = get_film_meta('film_synopsis_full_vn');
+$syn_short_en = get_film_meta('film_synopsis_short');
+$syn_short_vn = get_film_meta('film_synopsis_short_vn');
+$syn_full  = $lang === 'vi' ? ($syn_full_vn  ?: $syn_full_en)  : ($syn_full_en  ?: $syn_full_vn);
+$syn_short = $lang === 'vi' ? ($syn_short_vn ?: $syn_short_en) : ($syn_short_en ?: $syn_short_vn);
+
 $director  = get_film_meta('film_director');
 $writer    = get_film_meta('film_writer');
 $producer  = get_film_meta('film_producer');
 $cast      = get_film_meta('film_cast');
-$vn_title  = get_film_meta('film_vn_title');
+
+// Dual-language title — post_title is Vietnamese (primary), film_en_title is English
+$titles = get_film_display_titles();
+$main_title = $titles['main'];
+$sub_title  = $titles['sub'];
+
 $press_kit = get_film_meta('film_press_kit');
 $poster_url = get_film_poster_url(null,'large');
 $film_logo = get_film_logo_url(null,'large');
@@ -33,16 +46,16 @@ $film_logo = get_film_logo_url(null,'large');
     <?php if($film_logo): ?>
       <img src="<?php echo esc_url($film_logo); ?>" alt="<?php the_title_attribute(); ?>" class="film-hero-logo">
     <?php endif; ?>
-    <p class="film-hero-title"><?php the_title(); ?><?php if($vn_title): ?> — <?php echo esc_html($vn_title); ?><?php endif; ?></p>
+    <p class="film-hero-title"><?php echo esc_html($main_title); ?></p>
     <div class="hero-ctas film-hero-ctas">
       <?php if($trailer): ?>
         <a href="<?php echo esc_url($trailer); ?>" class="btn-primary" target="_blank" rel="noopener">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" style="margin-right:8px"><path d="M8 5v14l11-7z"/></svg>
-          Watch Trailer
+          <?php bbs_e('Watch Trailer'); ?>
         </a>
       <?php endif; ?>
       <?php if($ticket): ?>
-        <a href="<?php echo esc_url($ticket); ?>" class="btn-ghost" target="_blank" rel="noopener">Buy Tickets</a>
+        <a href="<?php echo esc_url($ticket); ?>" class="btn-ghost" target="_blank" rel="noopener"><?php bbs_e('Buy Tickets'); ?></a>
       <?php endif; ?>
     </div>
   </div>
@@ -63,22 +76,22 @@ $film_logo = get_film_logo_url(null,'large');
 
     <div class="film-overview-info">
     <div class="film-overview-meta-col">
-      <h2 class="film-overview-title"><?php the_title(); ?></h2>
-      <?php if($vn_title): ?>
-        <p class="film-overview-vn"><?php echo esc_html($vn_title); ?></p>
+      <h2 class="film-overview-title"><?php echo esc_html($main_title); ?></h2>
+      <?php if($sub_title): ?>
+        <p class="film-overview-vn"><?php echo esc_html($sub_title); ?></p>
       <?php endif; ?>
       <div class="film-overview-meta">
         <?php if($rating): ?>
-          <div class="meta-row"><span class="meta-label">Rating</span><span class="meta-value"><?php echo esc_html($rating); ?></span></div>
+          <div class="meta-row"><span class="meta-label"><?php bbs_e('Rating'); ?></span><span class="meta-value"><?php echo esc_html($rating); ?></span></div>
         <?php endif; ?>
         <?php if($runtime): ?>
-          <div class="meta-row"><span class="meta-label">Runtime</span><span class="meta-value"><?php echo esc_html($runtime); ?> min</span></div>
+          <div class="meta-row"><span class="meta-label"><?php bbs_e('Runtime'); ?></span><span class="meta-value"><?php echo esc_html($runtime); ?> <?php bbs_e('min'); ?></span></div>
         <?php endif; ?>
         <?php if($release): ?>
-          <div class="meta-row"><span class="meta-label">Release Date</span><span class="meta-value"><?php echo esc_html($release); ?></span></div>
+          <div class="meta-row"><span class="meta-label"><?php bbs_e('Release Date'); ?></span><span class="meta-value"><?php echo esc_html($release); ?></span></div>
         <?php endif; ?>
         <?php if($genre): ?>
-          <div class="meta-row"><span class="meta-label">Genre</span><span class="meta-value"><?php echo esc_html($genre); ?></span></div>
+          <div class="meta-row"><span class="meta-label"><?php bbs_e('Genre'); ?></span><span class="meta-value"><?php echo esc_html($genre); ?></span></div>
         <?php endif; ?>
       </div>
     </div>
@@ -91,16 +104,16 @@ $film_logo = get_film_logo_url(null,'large');
 
     <div class="film-overview-crew">
       <?php if($director): ?>
-      <div class="crew-block"><strong>Directed By</strong><span><?php echo esc_html($director); ?></span></div>
+      <div class="crew-block"><strong><?php bbs_e('Directed By'); ?></strong><span><?php echo esc_html($director); ?></span></div>
       <?php endif; ?>
       <?php if($writer): ?>
-      <div class="crew-block"><strong>Written By</strong><span><?php echo esc_html($writer); ?></span></div>
+      <div class="crew-block"><strong><?php bbs_e('Written By'); ?></strong><span><?php echo esc_html($writer); ?></span></div>
       <?php endif; ?>
       <?php if($producer): ?>
-      <div class="crew-block"><strong>Produced By</strong><span><?php echo esc_html($producer); ?></span></div>
+      <div class="crew-block"><strong><?php bbs_e('Produced By'); ?></strong><span><?php echo esc_html($producer); ?></span></div>
       <?php endif; ?>
       <?php if($cast): ?>
-      <div class="crew-block"><strong>Cast</strong><span><?php echo esc_html($cast); ?></span></div>
+      <div class="crew-block"><strong><?php bbs_e('Cast'); ?></strong><span><?php echo esc_html($cast); ?></span></div>
       <?php endif; ?>
     </div>
     </div><!-- /.film-overview-info -->
@@ -109,10 +122,10 @@ $film_logo = get_film_logo_url(null,'large');
 </section>
 
 <!-- ③ VIDEOS -->
-<?php $videos = bluebells_parse_videos($trailer, get_film_meta('film_videos')); ?>
+<?php $videos = bluebells_parse_videos(get_film_meta('film_videos')); ?>
 <?php if ( $videos ): ?>
 <section class="section-pad section-dark section-border-top">
-  <h2 class="section-heading">Videos</h2>
+  <h2 class="section-heading"><?php bbs_e('Videos'); ?></h2>
   <div class="video-carousel" data-count="<?php echo count($videos); ?>">
     <button class="carousel-arrow carousel-prev" aria-label="Previous">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l-8 8 8 8"/></svg>
@@ -151,7 +164,7 @@ if ( $gallery_ids && is_string($gallery_ids) ) {
 }
 if ( $gallery_ids ): ?>
 <section class="section-pad section-dark section-border-top">
-  <h2 class="section-heading">Photos</h2>
+  <h2 class="section-heading"><?php bbs_e('Photos'); ?></h2>
   <div class="photo-carousel" data-count="<?php echo count($gallery_ids); ?>">
     <button class="carousel-arrow carousel-prev" aria-label="Previous">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l-8 8 8 8"/></svg>
@@ -206,7 +219,7 @@ if ( empty($related) ) {
 $related = array_slice($related, 0, 12);
 if($related):?>
 <section class="section-pad section-gray section-border-top">
-  <h2 class="section-heading">More Films</h2>
+  <h2 class="section-heading"><?php bbs_e('More Movies'); ?></h2>
   <div class="films-carousel" data-count="<?php echo count($related); ?>">
     <button class="carousel-arrow carousel-prev" aria-label="Previous">
       <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M15 4l-8 8 8 8"/></svg>
@@ -228,7 +241,7 @@ if($related):?>
               <?php endif; ?>
             </div>
             <div class="film-info">
-              <h3 class="film-name"><?php echo esc_html($film->post_title); ?></h3>
+              <h3 class="film-name"><?php echo esc_html(get_film_main_title($film->ID)); ?></h3>
             </div>
           </article>
           </a>

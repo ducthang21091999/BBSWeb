@@ -19,7 +19,8 @@ if ( empty($banner_films) ) {
     <?php foreach ( $banner_films as $i => $film ):
       $bg      = get_film_banner_url($film->ID,'film-hero') ?: get_film_poster_url($film->ID,'film-hero');
       $status  = get_film_status_label($film->ID);
-      $trailer = get_film_meta('film_trailer',$film->ID);
+      $trailer = get_film_trailer_url($film->ID);
+      $is_soon = bluebells_is_coming_soon($film->ID);
     ?>
     <a href="<?php echo get_permalink($film->ID); ?>" class="hero-slide<?php echo $i===0?' active':''; ?>">
       <div class="hero-bg-image" style="background-image:url('<?php echo esc_url($bg); ?>')"></div>
@@ -27,10 +28,10 @@ if ( empty($banner_films) ) {
         <?php if($status): ?>
           <p class="hero-eyebrow"><?php echo esc_html($status); ?> — <?php echo date('Y'); ?></p>
         <?php endif; ?>
-        <h2 class="hero-title"><?php echo esc_html($film->post_title); ?></h2>
+        <h2 class="hero-title"><?php echo get_film_title_html($film->ID); ?></h2>
         <div class="hero-ctas">
-          <?php if($trailer): ?>
-            <span class="btn-primary hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>">Watch Trailer</span>
+          <?php if ( $trailer ): ?>
+            <span class="btn-primary hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>"><?php bbs_e('Watch Trailer'); ?></span>
           <?php endif; ?>
         </div>
       </div>
@@ -55,17 +56,17 @@ if ( empty($banner_films) ) {
 
 <!-- FEATURED SLATE -->
 <?php
-$featured = bluebells_get_films_sorted(['posts_per_page'=>-1]);
+$featured = bluebells_get_films_sorted(['posts_per_page'=>5]);
 ?>
 <?php if ( $featured ): ?>
-<section class="section-pad section-dark section-border-top">
+<section class="section-pad section-gray section-border-top">
   <div class="slate-header">
-    <h2 class="section-heading">Featured Movies</h2>
-    <a href="<?php echo get_post_type_archive_link('film'); ?>" class="view-all">View all movies</a>
+    <h2 class="section-heading"><?php bbs_e('Featured Movies'); ?></h2>
+    <a href="<?php echo get_post_type_archive_link('film'); ?>" class="view-all"><?php bbs_e('View all movies'); ?></a>
   </div>
   <div class="featured-movies-grid" data-batch="10">
     <?php foreach ( $featured as $i => $film ): ?>
-    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link<?php echo $i >= 10 ? ' is-hidden' : ''; ?>">
+    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
     <article class="film-card">
       <div class="film-poster">
         <?php $poster = get_film_poster_url($film->ID,'film-card'); if($poster): ?>
@@ -78,15 +79,12 @@ $featured = bluebells_get_films_sorted(['posts_per_page'=>-1]);
         <?php endif; ?>
       </div>
       <div class="film-info">
-        <h3 class="film-name"><?php echo esc_html($film->post_title); ?></h3>
+        <h3 class="film-name"><?php echo esc_html(get_film_main_title($film->ID)); ?></h3>
       </div>
     </article>
     </a>
     <?php endforeach; ?>
   </div>
-  <?php if ( count($featured) > 10 ): ?>
-    <button type="button" class="more-movies-btn">More movies</button>
-  <?php endif; ?>
 </section>
 <?php endif; ?>
 
@@ -97,8 +95,8 @@ $now_showing = get_posts(['post_type'=>'film','posts_per_page'=>1,
 $ns = $now_showing ? $now_showing[0] : null;
 ?>
 <?php if ( $ns ): ?>
-<section class="section-pad section-gray section-border-top">
-  <h2 class="section-heading">Now in Cinemas</h2>
+<section class="section-pad section-dark section-border-top">
+  <h2 class="section-heading"><?php bbs_e('Now in Cinemas'); ?></h2>
   <div class="showing-inner">
     <?php
     $ns_banner = get_film_banner_url($ns->ID, 'film-hero');
@@ -126,8 +124,8 @@ $ns = $now_showing ? $now_showing[0] : null;
       <?php endif; ?>
     </a>
     <div class="showing-details">
-      <p class="showing-eyebrow">Now Showing</p>
-      <h2 class="showing-title"><?php echo esc_html($ns->post_title); ?></h2>
+      <p class="showing-eyebrow"><?php bbs_e('Now Showing'); ?></p>
+      <h2 class="showing-title"><?php echo get_film_title_html($ns->ID); ?></h2>
       <div class="film-meta-row">
         <?php $genre = get_film_genre_string($ns->ID); if($genre): ?>
           <div class="meta-item"><strong>Genre</strong><?php echo esc_html($genre); ?></div>
@@ -147,10 +145,10 @@ $ns = $now_showing ? $now_showing[0] : null;
       <?php endif; ?>
       <div class="showing-ctas">
         <?php $ticket = get_film_meta('film_ticket_link',$ns->ID); if($ticket): ?>
-          <a href="<?php echo esc_url($ticket); ?>" class="btn-primary" target="_blank" rel="noopener">Buy Tickets</a>
+          <a href="<?php echo esc_url($ticket); ?>" class="btn-primary" target="_blank" rel="noopener"><?php bbs_e('Buy Tickets'); ?></a>
         <?php endif; ?>
-        <?php $trailer = get_film_meta('film_trailer',$ns->ID); if($trailer): ?>
-          <a href="<?php echo esc_url($trailer); ?>" class="btn-ghost" target="_blank" rel="noopener">Watch Trailer</a>
+        <?php $trailer = get_film_trailer_url($ns->ID); if($trailer): ?>
+          <a href="<?php echo esc_url($trailer); ?>" class="btn-ghost" target="_blank" rel="noopener"><?php bbs_e('Watch Trailer'); ?></a>
         <?php endif; ?>
       </div>
     </div>
@@ -166,8 +164,8 @@ $coming = bluebells_get_films_sorted([
 ]);
 ?>
 <?php if ( $coming ): ?>
-<section class="section-pad section-dark section-border-top">
-  <h2 class="section-heading">Coming Soon</h2>
+<section class="section-pad section-gray section-border-top">
+  <h2 class="section-heading"><?php bbs_e('Coming Soon'); ?></h2>
   <div class="coming-grid">
     <?php foreach ( $coming as $film ): ?>
     <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
@@ -179,10 +177,10 @@ $coming = bluebells_get_films_sorted([
         <?php endif; ?>
       </div>
       <div class="coming-info">
-        <?php $rel = get_film_release_display($film->ID); if($rel): ?>
+        <?php $rel = get_film_release_label($film->ID); if($rel): ?>
           <p class="coming-date"><?php echo esc_html($rel); ?></p>
         <?php endif; ?>
-        <h3 class="coming-title"><?php echo esc_html($film->post_title); ?></h3>
+        <h3 class="coming-title"><?php echo esc_html(get_film_main_title($film->ID)); ?></h3>
       </div>
     </article>
     </a>
@@ -192,47 +190,65 @@ $coming = bluebells_get_films_sorted([
 <?php endif; ?>
 
 <!-- ABOUT + CAPABILITIES -->
-<section class="section-pad section-gray section-border-top">
-  <div class="about-grid">
+<section class="section-pad section-dark section-border-top">
+  <?php
+    $about_img_id  = (int) get_option('bluebells_about_image');
+    $about_img_url = $about_img_id ? wp_get_attachment_image_url($about_img_id, 'large') : '';
+  ?>
+  <div class="about-grid<?php echo $about_img_url ? ' has-image' : ''; ?>">
     <div class="about-text">
-      <h2 class="section-heading">Our Story</h2>
-      <p class="about-body">
-        Founded in 2022, Bluebells Studios was built on the foundation of Mockingbird Pictures, one of Vietnam's leading international film distribution companies.
-      </p>
-      <p class="about-body">
-        Our mission is to create films that celebrate Vietnamese identity, blend it with contemporary values, and bring Vietnamese stories to the global stage.
-      </p>
+      <h2 class="section-heading"><?php bbs_e('Our Story'); ?></h2>
+      <?php
+        $about_body = bbs_content(
+            'about_body',
+            "Thành lập năm 2022, Bluebells Studios được xây dựng trên nền tảng của Mockingbird Pictures — một trong những công ty phân phối phim quốc tế hàng đầu Việt Nam.\n\nSứ mệnh của chúng tôi là kiến tạo những bộ phim tôn vinh bản sắc Việt, hòa quyện cùng giá trị đương đại và đưa câu chuyện Việt Nam vươn ra thế giới.",
+            "Founded in 2022, Bluebells Studios was built on the foundation of Mockingbird Pictures, one of Vietnam's leading international film distribution companies.\n\nOur mission is to create movies that celebrate Vietnamese identity, blend it with contemporary values, and bring Vietnamese stories to the global stage."
+        );
+        foreach ( preg_split("/\r\n\r\n|\r\r|\n\n/", trim($about_body)) as $para ):
+            $para = trim($para);
+            if ( !$para ) continue;
+        ?>
+        <p class="about-body"><?php echo nl2br(esc_html($para)); ?></p>
+      <?php endforeach; ?>
     </div>
+    <?php if ( $about_img_url ): ?>
+    <div class="about-image">
+      <img src="<?php echo esc_url($about_img_url); ?>" alt="" loading="lazy">
+    </div>
+    <?php endif; ?>
+
+    <?php /* Capabilities list — currently hidden. Uncomment to restore.
     <div class="caps-list">
       <div class="cap-item">
         <span class="cap-num">01</span>
-        <p class="cap-title">Film Production</p>
-        <p class="cap-desc">IP development, script, production, post-production.</p>
+        <p class="cap-title"><?php bbs_e('Film Production'); ?></p>
+        <p class="cap-desc"><?php bbs_e('IP development, script, production, post-production.'); ?></p>
       </div>
       <div class="cap-item">
         <span class="cap-num">02</span>
-        <p class="cap-title">Theatrical Distribution</p>
-        <p class="cap-desc">Nationwide cinema network. Release strategy & booking.</p>
+        <p class="cap-title"><?php bbs_e('Theatrical Distribution'); ?></p>
+        <p class="cap-desc"><?php bbs_e('Nationwide cinema network. Release strategy & booking.'); ?></p>
       </div>
       <div class="cap-item">
         <span class="cap-num">03</span>
-        <p class="cap-title">PR & Media</p>
-        <p class="cap-desc">Press, premiere events, social campaigns, KOL.</p>
+        <p class="cap-title"><?php bbs_e('PR & Media'); ?></p>
+        <p class="cap-desc"><?php bbs_e('Press, premiere events, social campaigns, KOL.'); ?></p>
       </div>
       <div class="cap-item">
         <span class="cap-num">04</span>
-        <p class="cap-title">International</p>
-        <p class="cap-desc">Acquisition, co-production, festival & sales representation.</p>
+        <p class="cap-title"><?php bbs_e('International'); ?></p>
+        <p class="cap-desc"><?php bbs_e('Acquisition, co-production, festival & sales representation.'); ?></p>
       </div>
     </div>
+    */ ?>
   </div>
 </section>
 
 <!-- PARTNERS -->
 <?php $partners = function_exists('get_partners_sorted') ? get_partners_sorted() : []; ?>
 <?php if ( $partners ): ?>
-<section class="section-pad section-dark section-border-top">
-  <h2 class="section-heading">Our Partners</h2>
+<section class="section-pad section-gray section-border-top">
+  <h2 class="section-heading"><?php bbs_e('Our Partners'); ?></h2>
   <div class="partners-gallery">
     <?php foreach ( $partners as $p ):
       $logo_id  = get_field('partner_logo', $p->ID);

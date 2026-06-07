@@ -2,7 +2,7 @@
 
 <section class="section-pad section-dark">
   <div class="slate-header">
-    <h1 class="section-heading">Bluebells Studios' Movies</h1>
+    <h1 class="section-heading"><?php bbs_e("Bluebells Studios' Movies"); ?></h1>
   </div>
 
   <!-- Filter tabs -->
@@ -12,7 +12,7 @@
   ?>
   <?php if($statuses && !is_wp_error($statuses)): ?>
   <div class="filter-tabs">
-    <a href="<?php echo get_post_type_archive_link('film'); ?>" class="filter-tab<?php echo !$current_status?' active':''; ?>">All</a>
+    <a href="<?php echo get_post_type_archive_link('film'); ?>" class="filter-tab<?php echo !$current_status?' active':''; ?>"><?php bbs_e('All'); ?></a>
     <?php foreach($statuses as $term): ?>
     <a href="<?php echo get_post_type_archive_link('film').'?status='.esc_attr($term->slug); ?>"
        class="filter-tab<?php echo ($current_status===$term->slug)?' active':''; ?>">
@@ -47,25 +47,25 @@
         <?php endif; ?>
       </div>
       <div class="film-info">
-        <h2 class="film-name"><?php echo esc_html($film->post_title); ?></h2>
+        <h2 class="film-name"><?php echo esc_html(get_film_main_title($film->ID)); ?></h2>
       </div>
     </article>
     </a>
     <?php endforeach; ?>
   </div>
   <?php else: ?>
-    <p style="color:#999;font-size:15px;">No films found.</p>
+    <p style="color:#999;font-size:15px;"><?php bbs_e('No movies found.'); ?></p>
   <?php endif; ?>
 </section>
 
 <!-- CTA -->
 <section class="contact-section section-gray section-border-top">
   <div class="contact-inner">
-    <span class="contact-label">Partner With Us</span>
-    <h2 class="contact-headline">For acquisition or partnership inquiries</h2>
-    <p class="contact-sub">Contact the Bluebells Studios team for co-production, distribution rights, or brand partnerships.</p>
+    <span class="contact-label"><?php bbs_e('Partner With Us'); ?></span>
+    <h2 class="contact-headline"><?php bbs_e('For acquisition or partnership inquiries'); ?></h2>
+    <p class="contact-sub"><?php bbs_e('Contact the Bluebells Studios team for co-production, distribution rights, or brand partnerships.'); ?></p>
     <div class="contact-ctas">
-      <a href="<?php echo home_url('/contact'); ?>" class="btn-primary">Contact Us</a>
+      <a href="<?php echo home_url('/contact'); ?>" class="btn-primary"><?php bbs_e('Contact Us'); ?></a>
     </div>
   </div>
 </section>

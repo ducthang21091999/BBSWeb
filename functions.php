@@ -22,6 +22,249 @@ function bluebells_assets() {
 }
 add_action( 'wp_enqueue_scripts', 'bluebells_assets' );
 
+// ─── HOME FILMS CATALOG (chọn phim hiển thị banner trang chủ + sort order) ───
+function bluebells_home_films_menu() {
+    add_submenu_page(
+        'edit.php?post_type=film',
+        'Phim Trang Chủ',
+        'Phim Trang Chủ',
+        'manage_options',
+        'bluebells-home-films',
+        'bluebells_home_films_page'
+    );
+}
+add_action( 'admin_menu', 'bluebells_home_films_menu' );
+
+function bluebells_home_films_page() {
+    // Handle POST save
+    if ( isset($_POST['bluebells_home_films_nonce']) && wp_verify_nonce($_POST['bluebells_home_films_nonce'], 'bluebells_home_films') ) {
+        $selected = $_POST['featured'] ?? [];
+        $orders   = $_POST['menu_order'] ?? [];
+
+        // Get all films to ensure we update unticked ones too
+        $all_films = get_posts(['post_type'=>'film','posts_per_page'=>-1,'post_status'=>'any','fields'=>'ids']);
+        foreach ( $all_films as $fid ) {
+            $is_featured = isset($selected[$fid]) ? '1' : '0';
+            update_post_meta($fid, 'film_featured_banner', $is_featured);
+            $order = isset($orders[$fid]) ? (int) $orders[$fid] : 0;
+            wp_update_post(['ID' => $fid, 'menu_order' => $order]);
+        }
+        echo '<div class="notice notice-success is-dismissible"><p>✓ Đã lưu cài đặt.</p></div>';
+    }
+
+    // Fetch all films, then sort: featured first (by menu_order ASC), unfeatured after (by title ASC)
+    $films = get_posts([
+        'post_type'      => 'film',
+        'posts_per_page' => -1,
+        'post_status'    => 'publish',
+    ]);
+    usort($films, function($a, $b) {
+        $fa = get_post_meta($a->ID, 'film_featured_banner', true) === '1' ? 1 : 0;
+        $fb = get_post_meta($b->ID, 'film_featured_banner', true) === '1' ? 1 : 0;
+        if ( $fa !== $fb ) return $fb - $fa;  // featured (1) before non-featured (0)
+        if ( $fa === 1 ) return $a->menu_order - $b->menu_order;  // featured: by order ASC
+        return strcasecmp($a->post_title, $b->post_title);  // non-featured: alphabetical
+    });
+    ?>
+    <div class="wrap">
+        <h1>Phim hiển thị trên trang chủ</h1>
+        <p>Tick chọn phim → hiện trong <strong>banner slider</strong> trên trang chủ.
+        Số thứ tự nhỏ hơn → hiện trước. Đồng bộ 2 chiều với ô "Hiển thị trên Banner trang chủ" trong từng phim.</p>
+
+        <form method="post" action="">
+            <?php wp_nonce_field('bluebells_home_films', 'bluebells_home_films_nonce'); ?>
+
+            <table class="wp-list-table widefat striped" style="margin-top:16px;">
+                <thead>
+                    <tr>
+                        <th style="width:80px;text-align:center;">Hiển thị</th>
+                        <th style="width:100px;">Thứ tự</th>
+                        <th>Tên phim</th>
+                        <th style="width:160px;">Trạng thái</th>
+                        <th style="width:120px;">Hành động</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <?php if ( empty($films) ): ?>
+                        <tr><td colspan="5">Chưa có phim nào. <a href="<?php echo esc_url(admin_url('post-new.php?post_type=film')); ?>">Thêm phim mới</a></td></tr>
+                    <?php else: foreach ( $films as $f ):
+                        $is_featured = get_post_meta($f->ID, 'film_featured_banner', true) === '1';
+                        $status_terms = get_the_terms($f->ID, 'film_status');
+                        $status = ($status_terms && !is_wp_error($status_terms)) ? $status_terms[0]->name : '—';
+                        $en_title = get_post_meta($f->ID, 'film_en_title', true);
+                    ?>
+                        <tr>
+                            <td style="text-align:center;">
+                                <input type="checkbox" name="featured[<?php echo $f->ID; ?>]" value="1" <?php checked($is_featured); ?>>
+                            </td>
+                            <td>
+                                <input type="number" name="menu_order[<?php echo $f->ID; ?>]" value="<?php echo esc_attr($f->menu_order); ?>" min="0" step="1" style="width:80px;">
+                            </td>
+                            <td>
+                                <strong><?php echo esc_html($f->post_title); ?></strong>
+                                <?php if ( $en_title ): ?>
+                                    <br><span style="color:#777;font-size:12px;"><?php echo esc_html($en_title); ?></span>
+                                <?php endif; ?>
+                            </td>
+                            <td><?php echo esc_html($status); ?></td>
+                            <td>
+                                <a href="<?php echo esc_url(get_edit_post_link($f->ID)); ?>" class="button button-small">Edit</a>
+                                <a href="<?php echo esc_url(get_permalink($f->ID)); ?>" class="button button-small" target="_blank">View ↗</a>
+                            </td>
+                        </tr>
+                    <?php endforeach; endif; ?>
+                </tbody>
+            </table>
+
+            <?php submit_button('Lưu thay đổi'); ?>
+        </form>
+    </div>
+    <?php
+}
+
+// ─── SITE CONTENT SETTINGS PAGE (Slogan + About) ───
+function bluebells_site_content_menu() {
+    add_options_page(
+        'Site Content',
+        'Site Content',
+        'manage_options',
+        'bluebells-site-content',
+        'bluebells_site_content_page'
+    );
+}
+add_action( 'admin_menu', 'bluebells_site_content_menu' );
+
+function bluebells_register_site_content_settings() {
+    foreach ([
+        'bluebells_slogan_en','bluebells_slogan_vi',
+        'bluebells_about_body_en','bluebells_about_body_vi',
+        'bluebells_about_image',
+    ] as $opt) {
+        $cb = strpos($opt, 'body') !== false ? 'sanitize_textarea_field' : 'sanitize_text_field';
+        register_setting('bluebells_site_content', $opt, ['sanitize_callback' => $cb]);
+    }
+}
+add_action( 'admin_init', 'bluebells_register_site_content_settings' );
+
+function bluebells_site_content_page() {
+    wp_enqueue_media();
+    ?>
+    <div class="wrap">
+        <h1>Bluebells — Site Content</h1>
+        <p>Nội dung hiển thị trên website. Để trống → dùng giá trị mặc định trong code.</p>
+        <form method="post" action="options.php">
+            <?php settings_fields('bluebells_site_content'); ?>
+
+            <h2 style="margin-top:24px;">Slogan (hiển thị ở Contact CTA cuối trang)</h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th><label for="bluebells_slogan_vi">Slogan (Tiếng Việt)</label></th>
+                    <td><input type="text" name="bluebells_slogan_vi" id="bluebells_slogan_vi"
+                        value="<?php echo esc_attr(get_option('bluebells_slogan_vi')); ?>"
+                        class="large-text" placeholder="vd: Cùng tạo nên những bộ phim ý nghĩa.">
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="bluebells_slogan_en">Slogan (English)</label></th>
+                    <td><input type="text" name="bluebells_slogan_en" id="bluebells_slogan_en"
+                        value="<?php echo esc_attr(get_option('bluebells_slogan_en')); ?>"
+                        class="large-text" placeholder="e.g. Let's craft beautiful films together.">
+                    </td>
+                </tr>
+            </table>
+
+            <h2 style="margin-top:32px;">About / Our Story (section ở trang chủ)</h2>
+            <table class="form-table" role="presentation">
+                <tr>
+                    <th><label for="bluebells_about_body_vi">Nội dung (Tiếng Việt)</label></th>
+                    <td><textarea name="bluebells_about_body_vi" id="bluebells_about_body_vi"
+                        rows="6" class="large-text" placeholder="Mỗi đoạn cách nhau bằng 1 dòng trống."><?php
+                            echo esc_textarea(get_option('bluebells_about_body_vi'));
+                        ?></textarea>
+                        <p class="description">Mỗi dòng trống = 1 paragraph mới.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="bluebells_about_body_en">Nội dung (English)</label></th>
+                    <td><textarea name="bluebells_about_body_en" id="bluebells_about_body_en"
+                        rows="6" class="large-text" placeholder="Separate paragraphs with blank lines."><?php
+                            echo esc_textarea(get_option('bluebells_about_body_en'));
+                        ?></textarea>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label>Hình minh hoạ (tỷ lệ 4:3)</label></th>
+                    <td>
+                        <?php
+                          $img_id  = (int) get_option('bluebells_about_image');
+                          $img_url = $img_id ? wp_get_attachment_image_url($img_id, 'medium') : '';
+                        ?>
+                        <input type="hidden" name="bluebells_about_image" id="bluebells_about_image" value="<?php echo esc_attr($img_id); ?>">
+                        <div id="bluebells_about_image_preview" style="margin-bottom:8px;">
+                            <?php if ($img_url): ?>
+                                <img src="<?php echo esc_url($img_url); ?>" style="max-width:280px;aspect-ratio:4/3;object-fit:cover;border:1px solid #ddd;">
+                            <?php endif; ?>
+                        </div>
+                        <button type="button" class="button" id="bluebells_about_image_select">
+                            <?php echo $img_id ? 'Đổi ảnh' : 'Chọn ảnh'; ?>
+                        </button>
+                        <a href="<?php echo $img_id ? esc_url(admin_url('post.php?post='.$img_id.'&action=edit')) : '#'; ?>"
+                           target="_blank" class="button" id="bluebells_about_image_edit"
+                           style="<?php echo $img_id ? '' : 'display:none;'; ?>">Sửa ảnh ↗</a>
+                        <button type="button" class="button" id="bluebells_about_image_remove" style="<?php echo $img_id ? '' : 'display:none;'; ?>">Xóa ảnh</button>
+                        <p class="description">Khuyến nghị 1200×900px (4:3). Bấm "Sửa ảnh" để crop/xoay/resize trong WordPress.</p>
+                    </td>
+                </tr>
+            </table>
+
+            <script>
+            jQuery(function($) {
+                var frame;
+                var adminUrl = '<?php echo esc_js(admin_url("post.php?action=edit&post=")); ?>';
+                $('#bluebells_about_image_select').on('click', function(e){
+                    e.preventDefault();
+                    if (frame) { frame.open(); return; }
+                    frame = wp.media({ title:'Chọn ảnh', button:{text:'Chọn'}, multiple:false, library:{type:'image'} });
+                    frame.on('select', function(){
+                        var att = frame.state().get('selection').first().toJSON();
+                        $('#bluebells_about_image').val(att.id);
+                        $('#bluebells_about_image_preview').html('<img src="'+att.url+'" style="max-width:280px;aspect-ratio:4/3;object-fit:cover;border:1px solid #ddd;">');
+                        $('#bluebells_about_image_select').text('Đổi ảnh');
+                        $('#bluebells_about_image_edit').attr('href', adminUrl + att.id).show();
+                        $('#bluebells_about_image_remove').show();
+                    });
+                    frame.open();
+                });
+                $('#bluebells_about_image_remove').on('click', function(e){
+                    e.preventDefault();
+                    $('#bluebells_about_image').val('');
+                    $('#bluebells_about_image_preview').html('');
+                    $('#bluebells_about_image_select').text('Chọn ảnh');
+                    $('#bluebells_about_image_edit').hide();
+                    $(this).hide();
+                });
+            });
+            </script>
+
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
+
+// Helper: get content by current lang with fallback to default
+function bbs_content( $key, $default_vi = '', $default_en = '' ) {
+    $lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+    $opt  = "bluebells_{$key}_" . $lang;
+    $val  = get_option($opt);
+    if ( $val ) return $val;
+    // Fallback to other lang if current is empty
+    $alt_opt = "bluebells_{$key}_" . ($lang === 'vi' ? 'en' : 'vi');
+    $val = get_option($alt_opt);
+    if ( $val ) return $val;
+    return $lang === 'vi' ? $default_vi : $default_en;
+}
+
 // ─── CONTACT SETTINGS PAGE ───
 function bluebells_contact_settings_menu() {
     add_options_page(
@@ -154,6 +397,67 @@ function bluebells_handle_contact_form() {
 add_action('wp_ajax_bluebells_contact', 'bluebells_handle_contact_form');
 add_action('wp_ajax_nopriv_bluebells_contact', 'bluebells_handle_contact_form');
 
+// ─── I18N HELPERS ───
+// Allowed UI language codes
+function bbs_allowed_langs() { return ['vi', 'en']; }
+
+// Detect current language. Priority: ?lang= GET > cookie > Polylang > default 'vi'.
+function bbs_current_lang() {
+    static $lang = null;
+    if ( $lang !== null ) return $lang;
+
+    // 1. Explicit URL param (user just clicked switcher)
+    if ( isset($_GET['lang']) && in_array($_GET['lang'], bbs_allowed_langs(), true) ) {
+        return $lang = $_GET['lang'];
+    }
+
+    // 2. Cookie (persistent user choice)
+    if ( isset($_COOKIE['bbs_lang']) && in_array($_COOKIE['bbs_lang'], bbs_allowed_langs(), true) ) {
+        return $lang = $_COOKIE['bbs_lang'];
+    }
+
+    // 3. Polylang (if configured)
+    if ( function_exists('pll_current_language') ) {
+        $code = pll_current_language('slug');
+        if ( $code && in_array($code, bbs_allowed_langs(), true) ) return $lang = $code;
+    }
+
+    return $lang = 'vi';
+}
+
+// Persist ?lang= param as cookie so it sticks across navigation
+add_action('init', function() {
+    if ( isset($_GET['lang']) && in_array($_GET['lang'], bbs_allowed_langs(), true) ) {
+        // Use empty domain so cookie works for current host (localhost, .local, etc.)
+        setcookie('bbs_lang', $_GET['lang'], time() + 30 * DAY_IN_SECONDS, '/', '', false, false);
+        $_COOKIE['bbs_lang'] = $_GET['lang'];  // make immediately readable in this request
+    }
+}, 1);
+
+// Build URL for switching to a target language (preserves current path + query)
+function bbs_lang_switch_url( $target ) {
+    if ( ! in_array($target, bbs_allowed_langs(), true) ) return '#';
+    $request = $_SERVER['REQUEST_URI'] ?? '/';
+    // Strip existing lang= param to avoid duplicates
+    $request = remove_query_arg('lang', $request);
+    return add_query_arg('lang', $target, $request);
+}
+
+// Translate UI string using languages/translations.php array. Falls back to original if missing or empty.
+function bbs_t( $string ) {
+    static $cache = null;
+    if ( $cache === null ) {
+        $file = get_template_directory() . '/languages/translations.php';
+        $cache = file_exists($file) ? (include $file) : [];
+    }
+    $lang = bbs_current_lang();
+    $translated = $cache[$lang][$string] ?? '';
+    return $translated !== '' ? $translated : $string;
+}
+
+// Echo escaped translated UI string.
+function bbs_e( $string ) { echo esc_html( bbs_t($string) ); }
+
 function bluebells_setup() {
     add_theme_support( 'title-tag' );
     add_theme_support( 'post-thumbnails' );
@@ -198,16 +502,34 @@ add_action( 'init', 'bluebells_register_partners' );
 // Custom Post Type: Films
 function bluebells_register_films() {
     register_post_type( 'film', [
-        'labels'       => ['name'=>'Films','singular_name'=>'Film','add_new_item'=>'Add New Film','edit_item'=>'Edit Film','view_item'=>'View Film','not_found'=>'No films found'],
+        'labels'       => [
+            'name'          => 'Movies',
+            'singular_name' => 'Movie',
+            'add_new_item'  => 'Add New Movie',
+            'edit_item'     => 'Edit Movie',
+            'view_item'     => 'View Movie',
+            'not_found'     => 'No movies found',
+            'menu_name'     => 'Movies',
+        ],
         'public'       => true,
-        'has_archive'  => true,
-        'rewrite'      => ['slug'=>'films'],
+        'has_archive'  => 'movies',
+        'rewrite'      => ['slug'=>'movies'],
         'supports'     => ['title','thumbnail'],
         'menu_icon'    => 'dashicons-video-alt2',
-        'show_in_rest' => false,   // Force Classic Editor — ACF Free renders meta boxes more reliably
+        'show_in_rest' => false,
     ]);
 }
 add_action( 'init', 'bluebells_register_films' );
+
+// 301 redirect legacy /films/* URLs to /movies/* for backward compat
+add_action('template_redirect', function() {
+    $uri = $_SERVER['REQUEST_URI'] ?? '';
+    if ( preg_match('#^/films(/|$)#', $uri) ) {
+        $new = preg_replace('#^/films#', '/movies', $uri);
+        wp_redirect( home_url($new), 301 );
+        exit;
+    }
+});
 
 // Taxonomies
 function bluebells_register_taxonomies() {
@@ -244,8 +566,9 @@ function bluebells_register_acf_fields() {
         'fields' => [
             // ── Tab: Thông tin cơ bản ──
             ['key'=>'field_tab_basic','label'=>'Thông tin cơ bản','type'=>'tab','placement'=>'top'],
-            ['key'=>'field_film_vn_title','label'=>'Tên tiếng Việt','name'=>'film_vn_title','type'=>'text',
-             'instructions'=>'Tên phim bằng tiếng Việt.','wrapper'=>['width'=>'50'],'placeholder'=>'vd: Phí Phồng'],
+            ['key'=>'field_film_en_title','label'=>'Tên tiếng Anh','name'=>'film_en_title','type'=>'text',
+             'instructions'=>'Tên phim bản tiếng Anh. Title ở trên là tiếng Việt.','wrapper'=>['width'=>'50'],
+             'placeholder'=>'vd: Phi Phong: The Blood Demon'],
             ['key'=>'field_film_genre','label'=>'Thể loại','name'=>'film_genre_tax','type'=>'taxonomy',
              'taxonomy'=>'film_genre','add_term'=>1,'save_terms'=>1,'load_terms'=>1,
              'return_format'=>'id','field_type'=>'multi_select','wrapper'=>['width'=>'50'],
@@ -269,27 +592,46 @@ function bluebells_register_acf_fields() {
              'type'=>'true_false','instructions'=>'Bật để phim xuất hiện trong slideshow banner ở trang chủ.',
              'default_value'=>0,'ui'=>1,'ui_on_text'=>'Có','ui_off_text'=>'Không'],
             ['key'=>'field_film_poster','label'=>'Poster','name'=>'film_poster','type'=>'image',
-             'instructions'=>'Portrait (2:3). Min 600×900px.','wrapper'=>['width'=>'33'],
+             'instructions'=>'Portrait (2:3). Min 600×900px.','wrapper'=>['width'=>'20'],
              'return_format'=>'id','library'=>'all','preview_size'=>'film-poster-preview'],
             ['key'=>'field_film_banner','label'=>'Banner','name'=>'film_banner','type'=>'image',
-             'instructions'=>'Landscape hero (16:9). Min 1920×1080px.','wrapper'=>['width'=>'33'],
+             'instructions'=>'Landscape hero (16:9). Min 1920×1080px.','wrapper'=>['width'=>'40'],
              'return_format'=>'id','library'=>'all','preview_size'=>'film-banner-preview'],
-            ['key'=>'field_film_logo','label'=>'Logo phim','name'=>'film_logo','type'=>'image',
-             'instructions'=>'Logo/title treatment (PNG trong suốt).','wrapper'=>['width'=>'34'],
+            ['key'=>'field_film_logo','label'=>'Logo phim (Tiếng Việt)','name'=>'film_logo','type'=>'image',
+             'instructions'=>'PNG trong suốt.','wrapper'=>['width'=>'20'],
              'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
-            ['key'=>'field_film_trailer','label'=>'Trailer URL','name'=>'film_trailer','type'=>'url',
-             'instructions'=>'YouTube hoặc Vimeo URL.','wrapper'=>['width'=>'50'],
+            ['key'=>'field_film_logo_en','label'=>'Logo phim (Tiếng Anh)','name'=>'film_logo_en','type'=>'image',
+             'instructions'=>'Trống → fallback dùng logo VN.','wrapper'=>['width'=>'20'],
+             'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
+            ['key'=>'field_film_trailer','label'=>'Trailer URL (Tiếng Việt)','name'=>'film_trailer','type'=>'url',
+             'instructions'=>'YouTube hoặc Vimeo URL. Bản tiếng Việt mặc định.','wrapper'=>['width'=>'100'],
+             'placeholder'=>'https://youtube.com/watch?v=...'],
+            ['key'=>'field_film_trailer_en','label'=>'Trailer URL (Tiếng Anh)','name'=>'film_trailer_en','type'=>'url',
+             'instructions'=>'Trailer bản tiếng Anh. Nếu trống → fallback dùng trailer tiếng Việt.','wrapper'=>['width'=>'100'],
              'placeholder'=>'https://youtube.com/watch?v=...'],
             ['key'=>'field_film_videos','label'=>'Videos bổ sung','name'=>'film_videos','type'=>'textarea',
-             'instructions'=>'Mỗi dòng 1 video. Định dạng: <code>URL</code> hoặc <code>URL|Tiêu đề</code>. Nếu không nhập tiêu đề, tự lấy từ YouTube.<br>VD:<br><code>https://youtu.be/abc123</code> ← tự fetch title<br><code>https://youtu.be/xyz789|Behind The Scenes</code> ← title custom',
-             'wrapper'=>['width'=>'50'],'rows'=>6,'placeholder'=>"https://youtu.be/...\nhttps://youtu.be/...|Trailer chính"],
+             'instructions'=>'Mỗi dòng 1 video. Trailer chính KHÔNG tự đưa vào đây.<br>Các định dạng:<br>'
+                .'<code>URL</code> — tự fetch title từ YouTube cho cả 2 ngôn ngữ<br>'
+                .'<code>URL|Tiêu đề VN</code> — dùng tiêu đề này cho cả 2 ngôn ngữ<br>'
+                .'<code>URL|Tiêu đề VN|English Title</code> — có tiêu đề riêng cho mỗi ngôn ngữ<br>'
+                .'VD: <code>https://youtu.be/abc|Hậu trường tập 1|Behind The Scenes Ep 1</code>',
+             'wrapper'=>['width'=>'100'],'rows'=>8,
+             'placeholder'=>"https://youtu.be/...\nhttps://youtu.be/...|Trailer chính\nhttps://youtu.be/...|Hậu trường|Behind The Scenes"],
 
             // ── Tab: Nội dung ──
             ['key'=>'field_tab_content','label'=>'Nội dung','type'=>'tab','placement'=>'top'],
-            ['key'=>'field_film_logline','label'=>'Logline','name'=>'film_logline','type'=>'textarea','rows'=>2,'new_lines'=>'br'],
-            ['key'=>'field_film_synopsis_short','label'=>'Synopsis ngắn','name'=>'film_synopsis_short','type'=>'textarea','rows'=>4,'new_lines'=>'br'],
-            ['key'=>'field_film_synopsis_full','label'=>'Synopsis đầy đủ','name'=>'film_synopsis_full','type'=>'wysiwyg',
-             'tabs'=>'all','toolbar'=>'basic','media_upload'=>0,'delay'=>0],
+            ['key'=>'field_film_logline','label'=>'Logline','name'=>'film_logline','type'=>'textarea','rows'=>2,'new_lines'=>'br',
+             'instructions'=>'Câu mô tả siêu ngắn (1 dòng).'],
+            ['key'=>'field_film_synopsis_short','label'=>'Synopsis ngắn (EN)','name'=>'film_synopsis_short','type'=>'textarea','rows'=>4,'new_lines'=>'br',
+             'wrapper'=>['width'=>'50'],'instructions'=>'Tóm tắt ngắn — tiếng Anh.'],
+            ['key'=>'field_film_synopsis_short_vn','label'=>'Synopsis ngắn (VN)','name'=>'film_synopsis_short_vn','type'=>'textarea','rows'=>4,'new_lines'=>'br',
+             'wrapper'=>['width'=>'50'],'instructions'=>'Tóm tắt ngắn — tiếng Việt.'],
+            ['key'=>'field_film_synopsis_full','label'=>'Synopsis đầy đủ (EN)','name'=>'film_synopsis_full','type'=>'wysiwyg',
+             'tabs'=>'all','toolbar'=>'basic','media_upload'=>0,'delay'=>0,'wrapper'=>['width'=>'50'],
+             'instructions'=>'Synopsis đầy đủ — tiếng Anh.'],
+            ['key'=>'field_film_synopsis_full_vn','label'=>'Synopsis đầy đủ (VN)','name'=>'film_synopsis_full_vn','type'=>'wysiwyg',
+             'tabs'=>'all','toolbar'=>'basic','media_upload'=>0,'delay'=>0,'wrapper'=>['width'=>'50'],
+             'instructions'=>'Synopsis đầy đủ — tiếng Việt.'],
 
             // ── Tab: Đoàn phim ──
             ['key'=>'field_tab_crew','label'=>'Đoàn phim','type'=>'tab','placement'=>'top'],
@@ -354,13 +696,20 @@ function get_partners_sorted() {
     return $partners;
 }
 
-// Helper: film logo URL — reads ACF image ID for title treatment
+// Helper: film logo URL — language-aware (VN default, EN fallback to VN)
 function get_film_logo_url( $post_id = null, $size = 'large' ) {
     if ( !$post_id ) $post_id = get_the_ID();
-    $id = get_field( 'film_logo', $post_id );
-    if ( $id && is_numeric( $id ) ) {
-        $url = wp_get_attachment_image_url( (int) $id, $size );
-        if ( $url ) return $url;
+    $lang  = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+    $vi_id = get_field('film_logo', $post_id);
+    $en_id = get_field('film_logo_en', $post_id);
+
+    // Priority order: current-lang version first, then fallback to other lang
+    $candidates = $lang === 'en' ? [$en_id, $vi_id] : [$vi_id, $en_id];
+    foreach ( $candidates as $id ) {
+        if ( $id && is_numeric($id) ) {
+            $url = wp_get_attachment_image_url((int)$id, $size);
+            if ( $url ) return $url;
+        }
     }
     return '';
 }
@@ -385,6 +734,42 @@ function get_film_poster_url( $post_id = null, $size = 'film-poster' ) {
         if ( $url ) return $url;
     }
     return get_the_post_thumbnail_url( $post_id, $size ) ?: '';
+}
+
+// Helper: language-aware film title pair → ['main' => ..., 'sub' => ...]
+// post_title = Vietnamese (primary), film_en_title = English (ACF field).
+function get_film_display_titles( $post_id = null ) {
+    if ( !$post_id ) $post_id = get_the_ID();
+    $vn = get_the_title($post_id);
+    $en = get_post_meta($post_id, 'film_en_title', true);
+    // Backward-compat: if film_en_title empty, try old field name
+    if ( !$en ) $en = get_post_meta($post_id, 'film_vn_title', true);
+
+    $lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+
+    if ( $lang === 'vi' ) {
+        return ['main' => $vn ?: $en, 'sub' => ($en && $en !== $vn) ? $en : ''];
+    }
+    // EN
+    return ['main' => $en ?: $vn, 'sub' => ($vn && $vn !== $en) ? $vn : ''];
+}
+
+// Helper: just the main title for current language
+function get_film_main_title( $post_id = null ) {
+    $t = get_film_display_titles($post_id);
+    return $t['main'];
+}
+
+// Helper: render title as HTML — split at ":" or "—" so wrapping happens at natural break point
+function get_film_title_html( $post_id = null ) {
+    $title = get_film_main_title($post_id);
+    if ( !$title ) return '';
+    // Match "Phần 1: Phần 2" or "Phần 1 — Phần 2"
+    if ( preg_match('/^(.+?)\s*([:—–])\s*(.+)$/u', $title, $m) ) {
+        return '<span class="title-part">' . esc_html(trim($m[1]) . $m[2]) . '</span> '
+             . '<span class="title-part">' . esc_html(trim($m[3])) . '</span>';
+    }
+    return esc_html($title);
 }
 
 // Helper: get any film field via ACF
@@ -424,6 +809,22 @@ function get_film_release_display( $post_id = null ) {
     return $val;
 }
 
+// Smart release label — "Coming Soon" if status is coming-soon, else actual date
+function get_film_release_label( $post_id = null ) {
+    if ( !$post_id ) $post_id = get_the_ID();
+    $status_class = get_film_status_class($post_id);
+    if ( $status_class === 'coming-soon' ) {
+        return bbs_t('Coming Soon');
+    }
+    return get_film_release_display($post_id);
+}
+
+// Check if film is coming-soon
+function bluebells_is_coming_soon( $post_id = null ) {
+    if ( !$post_id ) $post_id = get_the_ID();
+    return get_film_status_class($post_id) === 'coming-soon';
+}
+
 // Comparator: year-only → month-year → full date → no date
 // Within each group: year & monthyear sort ASC (soonest first), full date DESC, none by post date DESC
 function bluebells_compare_films( $a, $b ) {
@@ -460,27 +861,29 @@ function bluebells_get_youtube_title( $video_id ) {
 }
 
 // Parse film_videos textarea into [['id'=>'abc','title'=>'...'], ...]
-// Each line: "URL" or "URL|Title". Optionally include $trailer first.
-function bluebells_parse_videos( $trailer = '', $extra_text = '' ) {
+// Each line: "URL" or "URL|TitleVN" or "URL|TitleVN|TitleEN".
+// If only 1 title given, used for both languages.
+// If no title, fetched from YouTube oembed.
+function bluebells_parse_videos( $extra_text = '' ) {
+    if ( !$extra_text ) return [];
+    $lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
     $items = [];
-    $seen_urls = [];
+    $seen  = [];
 
-    if ( $trailer ) {
-        $items[] = ['url' => $trailer, 'title' => 'Official Trailer'];
-        $seen_urls[$trailer] = true;
-    }
-    if ( $extra_text ) {
-        foreach ( array_filter(array_map('trim', explode("\n", $extra_text))) as $line ) {
-            $parts = array_map('trim', explode('|', $line, 2));
-            $url   = $parts[0] ?? '';
-            $title = $parts[1] ?? '';
-            if ( !$url || isset($seen_urls[$url]) ) continue;
-            $items[] = ['url' => $url, 'title' => $title];
-            $seen_urls[$url] = true;
-        }
+    foreach ( array_filter(array_map('trim', explode("\n", $extra_text))) as $line ) {
+        $parts    = array_map('trim', explode('|', $line, 3));
+        $url      = $parts[0] ?? '';
+        $title_vi = $parts[1] ?? '';
+        $title_en = $parts[2] ?? '';
+        if ( !$url || isset($seen[$url]) ) continue;
+
+        // Pick title for current language. EN falls back to VI if not provided.
+        $title = $lang === 'en' ? ( $title_en ?: $title_vi ) : $title_vi;
+
+        $items[] = ['url' => $url, 'title' => $title];
+        $seen[$url] = true;
     }
 
-    // Extract YouTube ID + ensure each has title
     $videos = [];
     foreach ( $items as $item ) {
         if ( preg_match('/(?:youtube\.com\/watch\?v=|youtu\.be\/)([^&\s]+)/', $item['url'], $m) ) {
@@ -491,6 +894,16 @@ function bluebells_parse_videos( $trailer = '', $extra_text = '' ) {
         }
     }
     return $videos;
+}
+
+// Get the trailer URL for current language (en falls back to vi)
+function get_film_trailer_url( $post_id = null ) {
+    if ( !$post_id ) $post_id = get_the_ID();
+    $vi = get_post_meta($post_id, 'film_trailer', true);
+    $en = get_post_meta($post_id, 'film_trailer_en', true);
+    $lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+    if ( $lang === 'en' ) return $en ?: $vi;
+    return $vi ?: $en;
 }
 
 // Get films sorted by the smart rule above

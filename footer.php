@@ -28,7 +28,7 @@ $social = [
         <?php endif; ?>
       </a>
 
-      <p class="footer-section-label">Follow Us</p>
+      <p class="footer-section-label"><?php bbs_e('Follow Us'); ?></p>
       <div class="footer-social-icons">
         <a href="<?php echo esc_url($social['facebook'] ?: '#'); ?>" target="_blank" rel="noopener" aria-label="Facebook" class="footer-social-link">
           <svg viewBox="0 0 24 24" fill="currentColor">
@@ -52,7 +52,7 @@ $social = [
 
     <!-- RIGHT: Contact info -->
     <div class="footer-contact-col">
-      <p class="footer-section-label">Contact Information</p>
+      <p class="footer-section-label"><?php bbs_e('Contact Information'); ?></p>
       <ul class="footer-contact">
         <?php if ( $contact_address ): ?>
         <li class="footer-contact-row">
