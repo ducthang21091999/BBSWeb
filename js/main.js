@@ -125,6 +125,16 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
 
+    // Hero ticket buttons — intercept click, open ticket URL in new tab, prevent slide navigation
+    slider.querySelectorAll('.hero-ticket-btn').forEach(btn => {
+      btn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        const url = this.dataset.ticket;
+        if (url) window.open(url, '_blank', 'noopener');
+      });
+    });
+
     // Touch / swipe support
     let touchStartX = 0;
     let touchEndX = 0;

@@ -12,7 +12,8 @@ $contact_phone   = get_option('bluebells_contact_phone');
 $contact_address = get_option('bluebells_contact_address');
 $logo_url = has_custom_logo() ? wp_get_attachment_image_url(get_theme_mod('custom_logo'), 'full') : '';
 ?>
-<section class="contact-section section-dark">
+<?php $bg_class = (isset($args['bg']) && $args['bg']) ? $args['bg'] : 'section-dark'; ?>
+<section class="contact-section <?php echo esc_attr($bg_class); ?>">
   <div class="contact-inner">
     <?php
       $slogan = bbs_content(

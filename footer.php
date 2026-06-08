@@ -47,7 +47,6 @@ $social = [
         </a>
       </div>
 
-      <p class="footer-copy">© 2022 Bluebells Studios Co., Ltd. All rights reserved.</p>
     </div>
 
     <!-- RIGHT: Contact info -->
@@ -91,6 +90,8 @@ $social = [
     </div>
 
   </div>
+
+  <p class="footer-copy">© 2022 Bluebells Studios Co., Ltd. All rights reserved.</p>
 </div>
 </footer>
 

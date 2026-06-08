@@ -20,33 +20,36 @@ if ( empty($banner_films) ) {
       $bg      = get_film_banner_url($film->ID,'film-hero') ?: get_film_poster_url($film->ID,'film-hero');
       $status  = get_film_status_label($film->ID);
       $trailer = get_film_trailer_url($film->ID);
+      $ticket  = get_film_meta('film_ticket_link', $film->ID);
       $is_soon = bluebells_is_coming_soon($film->ID);
     ?>
     <a href="<?php echo get_permalink($film->ID); ?>" class="hero-slide<?php echo $i===0?' active':''; ?>">
       <div class="hero-bg-image" style="background-image:url('<?php echo esc_url($bg); ?>')"></div>
       <div class="hero-content">
         <?php
-          // Only show eyebrow for now-showing / coming-soon. Other statuses hide it.
+          // Now Showing → eyebrow above title (no year)
+          // Coming Soon → eyebrow below title with year in parens
           $status_class = get_film_status_class($film->ID);
-          $show_eyebrow = in_array($status_class, ['now-showing', 'coming-soon'], true);
           $eyebrow_year = '';
           if ( $is_soon ) {
               $rel_raw = get_post_meta($film->ID, 'film_release_date', true);
               if ( preg_match('/(\d{4})/', $rel_raw, $m) ) {
                   $eyebrow_year = $m[1];
               } else {
-                  // No release date: estimate year as today + 3 months
                   $eyebrow_year = date('Y', strtotime('+3 months'));
               }
           }
         ?>
-        <?php if ( $show_eyebrow && $status ): ?>
-          <p class="hero-eyebrow"><?php echo esc_html($status); ?><?php if($eyebrow_year): ?> — <?php echo esc_html($eyebrow_year); ?><?php endif; ?></p>
-        <?php endif; ?>
         <h2 class="hero-title"><?php echo get_film_title_html($film->ID); ?></h2>
+        <?php if ( $status_class === 'coming-soon' && $status ): ?>
+          <p class="hero-eyebrow hero-eyebrow-below"><?php echo esc_html($status); ?><?php if($eyebrow_year): ?> (<?php echo esc_html($eyebrow_year); ?>)<?php endif; ?></p>
+        <?php endif; ?>
         <div class="hero-ctas">
+          <?php if ( $ticket ): ?>
+            <span class="btn-primary hero-ticket-btn" data-ticket="<?php echo esc_url($ticket); ?>"><?php bbs_e('Buy Tickets'); ?></span>
+          <?php endif; ?>
           <?php if ( $trailer ): ?>
-            <span class="btn-primary hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>"><?php bbs_e('Watch Trailer'); ?></span>
+            <span class="<?php echo $ticket ? 'btn-ghost' : 'btn-primary'; ?> hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>"><?php bbs_e('Watch Trailer'); ?></span>
           <?php endif; ?>
         </div>
       </div>
@@ -72,9 +75,12 @@ if ( empty($banner_films) ) {
 <!-- FEATURED SLATE -->
 <?php
 $featured = bluebells_get_films_by_release(5);
+// Counter for alternating section backgrounds — auto-adjusts when sections are conditionally shown.
+$bg_idx = 0;
+$bg = function() use (&$bg_idx) { return (++$bg_idx) % 2 === 1 ? 'section-gray' : 'section-dark'; };
 ?>
 <?php if ( $featured ): ?>
-<section class="section-pad section-gray section-border-top">
+<section class="section-pad <?php echo $bg(); ?> section-border-top">
   <div class="slate-header">
     <h2 class="section-heading"><?php bbs_e('Featured Movies'); ?></h2>
     <a href="<?php echo get_post_type_archive_link('film'); ?>" class="view-all"><?php bbs_e('View all movies'); ?></a>
@@ -114,7 +120,7 @@ $now_showing = get_posts(['post_type'=>'film','posts_per_page'=>1,
 $ns = $now_showing ? $now_showing[0] : null;
 ?>
 <?php if ( $ns ): ?>
-<section class="section-pad section-dark section-border-top">
+<section class="section-pad <?php echo $bg(); ?> section-border-top">
   <h2 class="section-heading"><?php bbs_e('Now in Cinemas'); ?></h2>
   <div class="showing-inner">
     <?php
@@ -211,7 +217,7 @@ $coming = bluebells_get_films_sorted([
 */ ?>
 
 <!-- ABOUT + CAPABILITIES -->
-<section class="section-pad section-dark section-border-top">
+<section class="section-pad <?php echo $bg(); ?> section-border-top">
   <?php
     $about_img_id  = (int) get_option('bluebells_about_image');
     $about_img_url = $about_img_id ? wp_get_attachment_image_url($about_img_id, 'large') : '';
@@ -268,7 +274,7 @@ $coming = bluebells_get_films_sorted([
 <!-- PARTNERS -->
 <?php $partners = function_exists('get_partners_sorted') ? get_partners_sorted() : []; ?>
 <?php if ( $partners ): ?>
-<section class="section-pad section-gray section-border-top">
+<section class="section-pad <?php echo $bg(); ?> section-border-top">
   <h2 class="section-heading"><?php bbs_e('Our Partners'); ?></h2>
   <div class="partners-gallery">
     <?php foreach ( $partners as $p ):
@@ -291,6 +297,6 @@ $coming = bluebells_get_films_sorted([
 <?php endif; ?>
 
 <!-- CONTACT CTA -->
-<?php get_template_part('template-parts/section-contact'); ?>
+<?php get_template_part('template-parts/section-contact', null, ['bg' => $bg()]); ?>
 
 <?php get_footer(); ?>

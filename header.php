@@ -37,14 +37,15 @@ $is_films = is_post_type_archive('film') || is_singular('film');
         <a href="<?php echo get_post_type_archive_link('film'); ?>"<?php if($is_films) echo ' class="active"'; ?>><?php bbs_e('Movies'); ?></a>
         <a href="<?php echo home_url('/contact'); ?>"><?php bbs_e('Contact'); ?></a>
       </div>
-      <?php
-      // Language switcher — cookie-based, simple toggle
-      $current_lang = bbs_current_lang();
-      $target_lang  = $current_lang === 'vi' ? 'en' : 'vi';
-      $switch_url   = bbs_lang_switch_url($target_lang);
-      ?>
-      <a href="<?php echo esc_url($switch_url); ?>" class="lang-switch" aria-label="Switch language"><?php echo esc_html(strtoupper($target_lang)); ?></a>
     </nav>
+
+    <?php
+    // Language switcher — always visible outside the mobile menu
+    $current_lang = bbs_current_lang();
+    $target_lang  = $current_lang === 'vi' ? 'en' : 'vi';
+    $switch_url   = bbs_lang_switch_url($target_lang);
+    ?>
+    <a href="<?php echo esc_url($switch_url); ?>" class="lang-switch" aria-label="Switch language"><?php echo esc_html(strtoupper($target_lang)); ?></a>
 
     <button class="nav-toggle" id="nav-toggle" aria-label="Toggle navigation">
       <span></span>
