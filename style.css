@@ -314,12 +314,20 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
 
 @media (max-width:900px) {
   /* Convert to horizontal swipe gallery — posters bigger, 2-2.5 visible */
-  .featured-movies-grid {
+  .section-pad > .featured-movies-grid {
     display:flex; grid-template-columns:none;
     overflow-x:auto; gap:12px;
     scroll-snap-type:x mandatory;
+    /* Use explicit padding (overriding inherited 20px) for breathing room.
+       scroll-padding ensures snap respects the inset on subsequent cards. */
+    padding:0 20px 8px;
+    scroll-padding-left:20px;
+    scroll-padding-right:20px;
     -webkit-overflow-scrolling:touch;
-    padding-bottom:8px;
+  }
+  /* Phantom spacer after last card so right edge gets breathing room too */
+  .featured-movies-grid::after {
+    content:''; flex:0 0 4px;
   }
   .featured-movies-grid::-webkit-scrollbar { height:3px; }
   .featured-movies-grid::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.15); border-radius:2px; }
@@ -990,6 +998,19 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
   .film-overview-crew .crew-cast  { flex:1 1 100%; }
   .film-overview-synopsis { grid-area:synopsis; }
   .showing-inner{grid-template-columns:1fr;gap:16px}
+  /* Full-bleed poster/banner on mobile single-column for visual balance.
+     Negative margin escapes the section's 20px padding both sides. */
+  .showing-poster-wrap,
+  .showing-banner-wrap{
+    margin-left:-20px; margin-right:-20px;
+    max-width:none; width:auto;
+  }
+  .showing-poster-wrap img,
+  .showing-banner-wrap img{width:100%}
+  /* Buttons center-aligned on mobile for thumb-friendly UX */
+  .showing-ctas{justify-content:center}
+  .showing-ctas .btn-primary,
+  .showing-ctas .btn-ghost{flex:1 1 0;max-width:180px;text-align:center;justify-content:center}
   .coming-grid{grid-template-columns:1fr 1fr}
   .about-grid{grid-template-columns:1fr;gap:48px}
   .partners-cats{grid-template-columns:1fr 1fr}
@@ -1048,7 +1069,7 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
     font-size:12px;letter-spacing:0.18em;font-weight:700;
     color:#fff;margin-bottom:22px;text-shadow:0 1px 8px rgba(0,0,0,0.6);
   }
-  .film-hero-ctas{flex-direction:column;gap:10px;width:100%;max-width:380px;align-items:stretch}
+  .film-hero-ctas{flex-direction:column;gap:10px;width:100%;max-width:380px;margin:0 auto;align-items:stretch}
   .film-hero-ctas .btn-primary,.film-hero-ctas .btn-ghost{
     width:100%;max-width:100%;padding:15px 24px;font-size:11px;min-width:0;border-radius:4px;
   }
