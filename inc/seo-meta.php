@@ -114,25 +114,42 @@ function bbs_seo_current_meta() {
 }
 
 /**
- * Meta for /movies/<slug>/ single film. Phase 2 will refine; for now we
- * compose from post title + excerpt so single films don't inherit Home meta.
+ * Meta for /movies/<slug>/ single film. Picks bilingual synopsis from ACF
+ * so VI users see Vietnamese description, EN users see English.
+ *
+ * Synopsis priority:
+ *  - lang=vi: film_synopsis_short_vn → film_synopsis_short → post_excerpt → post_content (155 chars)
+ *  - lang=en: film_synopsis_short → film_synopsis_short_vn → post_excerpt → post_content (155 chars)
  */
 function bbs_seo_film_meta( $post_id, $lang ) {
     $title = get_post_field('post_title', $post_id);
-    $excerpt = trim( wp_strip_all_tags( get_post_field('post_excerpt', $post_id) ) );
-    if ( ! $excerpt ) {
-        $excerpt = trim( wp_strip_all_tags( get_post_field('post_content', $post_id) ) );
-        $excerpt = mb_substr($excerpt, 0, 155);
+
+    $syn_en = trim( wp_strip_all_tags( get_post_meta($post_id, 'film_synopsis_short', true) ) );
+    $syn_vn = trim( wp_strip_all_tags( get_post_meta($post_id, 'film_synopsis_short_vn', true) ) );
+
+    if ( $lang === 'vi' ) {
+        $desc = $syn_vn ?: $syn_en;
+    } else {
+        $desc = $syn_en ?: $syn_vn;
     }
-    $suffix = $lang === 'vi' ? 'Bluebells Studios | Hãng Phim Việt Nam' : 'Bluebells Studios | Vietnamese Film';
+
+    if ( ! $desc ) {
+        $desc = trim( wp_strip_all_tags( get_post_field('post_excerpt', $post_id) ) );
+    }
+    if ( ! $desc ) {
+        $desc = mb_substr( trim( wp_strip_all_tags( get_post_field('post_content', $post_id) ) ), 0, 155);
+    }
+
+    $suffix = $lang === 'vi'
+        ? 'Bluebells Studios | Hãng Phim Việt Nam'
+        : 'Bluebells Studios | Vietnamese Film';
+
     return [
-        'title' => $title . ' | ' . $suffix,
-        'desc'  => $excerpt ?: ( $lang === 'vi'
-            ? 'Tác phẩm điện ảnh của Bluebells Studios.'
-            : 'A film by Bluebells Studios.' ),
-        'og_title' => $title . ' | Bluebells Studios',
-        'og_desc'  => $excerpt ?: '',
-        'og_image_slug' => '', // Will use poster instead — handled in bbs_seo_og_image_url()
+        'title'         => $title . ' | ' . $suffix,
+        'desc'          => $desc ?: ( $lang === 'vi' ? 'Tác phẩm điện ảnh của Bluebells Studios.' : 'A film by Bluebells Studios.' ),
+        'og_title'      => $title . ' | Bluebells Studios',
+        'og_desc'       => $desc,
+        'og_image_slug' => '', // poster fallback handled in bbs_seo_og_image_url()
     ];
 }
 
@@ -166,10 +183,17 @@ function bbs_seo_lang_variant_url( $lang ) {
  * ──────────────────────────────────────────────────────────────────────── */
 
 function bbs_seo_og_image_url( $meta ) {
-    // Single film: use poster as OG image
-    if ( bbs_seo_context() === 'film_single' && function_exists('get_film_poster_url') ) {
-        $poster = get_film_poster_url( get_queried_object_id(), 'film-hero' );
-        if ( $poster ) return $poster;
+    // Single film: prefer banner (16:9 ratio matches OG spec better than 2:3 poster)
+    if ( bbs_seo_context() === 'film_single' ) {
+        $film_id = get_queried_object_id();
+        if ( function_exists('get_film_banner_url') ) {
+            $banner = get_film_banner_url( $film_id, 'film-hero' );
+            if ( $banner ) return $banner;
+        }
+        if ( function_exists('get_film_poster_url') ) {
+            $poster = get_film_poster_url( $film_id, 'film-hero' );
+            if ( $poster ) return $poster;
+        }
     }
 
     $slug = $meta['og_image_slug'] ?? '';
@@ -331,6 +355,244 @@ add_action('wp_head', function() {
 }, 3);
 
 /* ─────────────────────────────────────────────────────────────────────────
+ * og:video tag on single film pages — Facebook/X recognize this for
+ * video card embedding (when trailer is present and is YouTube/Vimeo).
+ * ──────────────────────────────────────────────────────────────────────── */
+
+add_action('wp_head', function() {
+    if ( bbs_seo_context() !== 'film_single' ) return;
+    if ( ! function_exists('get_film_trailer_url') ) return;
+
+    $trailer = get_film_trailer_url( get_queried_object_id() );
+    if ( ! $trailer ) return;
+
+    // Convert YouTube watch URLs to embed URLs for og:video
+    $embed = $trailer;
+    if ( preg_match('#(?:youtube\.com/watch\?v=|youtu\.be/)([A-Za-z0-9_\-]+)#', $trailer, $m) ) {
+        $embed = 'https://www.youtube.com/embed/' . $m[1];
+    }
+    printf('<meta property="og:video" content="%s">' . "\n", esc_url($embed));
+    printf('<meta property="og:video:url" content="%s">' . "\n", esc_url($embed));
+    printf('<meta property="og:video:secure_url" content="%s">' . "\n", esc_url($embed));
+    echo '<meta property="og:video:type" content="text/html">' . "\n";
+}, 4);
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Movie schema (JSON-LD) on single film pages
+ *
+ * Includes: name, description, image (poster + banner), director, actor[],
+ * genre[], duration (ISO 8601 if parsable), datePublished, contentRating,
+ * trailer (VideoObject), inLanguage, productionCompany.
+ *
+ * Boosts Google rich results for film queries ("Bluebells phi phong" etc.)
+ * ──────────────────────────────────────────────────────────────────────── */
+
+add_action('wp_head', function() {
+    if ( bbs_seo_context() !== 'film_single' ) return;
+
+    $film_id = get_queried_object_id();
+    $lang    = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+    $meta    = bbs_seo_film_meta($film_id, $lang);
+    $url     = get_permalink($film_id);
+
+    // Images — provide both banner + poster so Google picks the best
+    $images = [];
+    if ( function_exists('get_film_banner_url') ) {
+        $b = get_film_banner_url($film_id, 'film-hero');
+        if ( $b ) $images[] = $b;
+    }
+    if ( function_exists('get_film_poster_url') ) {
+        $p = get_film_poster_url($film_id, 'film-hero');
+        if ( $p ) $images[] = $p;
+    }
+
+    // Director / writer / producer / cast — split cast on commas + newlines
+    $director = trim( get_post_meta($film_id, 'film_director', true) );
+    $writer   = trim( get_post_meta($film_id, 'film_writer', true) );
+    $producer = trim( get_post_meta($film_id, 'film_producer', true) );
+    $cast_raw = trim( wp_strip_all_tags( get_post_meta($film_id, 'film_cast', true) ) );
+    $cast = $cast_raw
+        ? array_values(array_filter(array_map('trim', preg_split('/[,;\r\n]+/', $cast_raw))))
+        : [];
+
+    // Genres from taxonomy
+    $genre_terms = wp_get_post_terms($film_id, 'film_genre', ['fields' => 'names']);
+    $genres = is_array($genre_terms) ? $genre_terms : [];
+
+    // Release date — best effort ISO format
+    $release_raw = get_post_meta($film_id, 'film_release_date', true);
+    $release_iso = '';
+    if ( $release_raw ) {
+        $ts = strtotime($release_raw);
+        if ( $ts ) $release_iso = date('Y-m-d', $ts);
+        elseif ( preg_match('/(\d{4})/', $release_raw, $m) ) $release_iso = $m[1];
+    }
+
+    // Runtime — try to parse "120 min" / "1h 45m" / "105" → ISO 8601 duration
+    $runtime_raw = trim( get_post_meta($film_id, 'film_runtime', true) );
+    $duration_iso = '';
+    if ( $runtime_raw ) {
+        if ( preg_match('/(\d+)\s*h(?:our)?s?\s*(\d+)?/i', $runtime_raw, $m) ) {
+            $duration_iso = 'PT' . (int)$m[1] . 'H' . (isset($m[2]) ? (int)$m[2] . 'M' : '');
+        } elseif ( preg_match('/(\d+)\s*(?:min|phút|m)/i', $runtime_raw, $m) ) {
+            $duration_iso = 'PT' . (int)$m[1] . 'M';
+        } elseif ( preg_match('/^(\d+)$/', $runtime_raw, $m) ) {
+            $duration_iso = 'PT' . (int)$m[1] . 'M';
+        }
+    }
+
+    // Content rating from age_rating taxonomy
+    $rating_terms = wp_get_post_terms($film_id, 'film_age_rating', ['fields' => 'names']);
+    $content_rating = ( ! is_wp_error($rating_terms) && ! empty($rating_terms) ) ? $rating_terms[0] : '';
+
+    // Original language
+    $orig_lang = trim( get_post_meta($film_id, 'film_language', true) );
+
+    // Trailer URL → VideoObject (Google understands this nested)
+    $trailer_url = function_exists('get_film_trailer_url') ? get_film_trailer_url($film_id) : '';
+
+    $schema = [
+        '@context'    => 'https://schema.org',
+        '@type'       => 'Movie',
+        '@id'         => $url . '#movie',
+        'url'         => $url,
+        'name'        => get_the_title($film_id),
+        'description' => $meta['desc'] ?: '',
+    ];
+    if ( $images )           $schema['image']           = count($images) === 1 ? $images[0] : $images;
+    if ( $director )         $schema['director']        = ['@type' => 'Person', 'name' => $director];
+    if ( $writer )           $schema['author']          = ['@type' => 'Person', 'name' => $writer];
+    if ( $producer )         $schema['producer']        = ['@type' => 'Person', 'name' => $producer];
+    if ( $cast ) {
+        $schema['actor'] = array_map(function( $name ) {
+            return ['@type' => 'Person', 'name' => $name];
+        }, $cast);
+    }
+    if ( $genres )           $schema['genre']           = $genres;
+    if ( $release_iso )      $schema['datePublished']   = $release_iso;
+    if ( $duration_iso )     $schema['duration']        = $duration_iso;
+    if ( $content_rating )   $schema['contentRating']   = $content_rating;
+    if ( $orig_lang )        $schema['inLanguage']      = $orig_lang;
+
+    // Production company → reference the Organization on Home
+    $schema['productionCompany'] = [
+        '@type' => 'Organization',
+        '@id'   => home_url('/') . '#organization',
+        'name'  => 'Bluebells Studios',
+    ];
+
+    if ( $trailer_url ) {
+        $embed = $trailer_url;
+        if ( preg_match('#(?:youtube\.com/watch\?v=|youtu\.be/)([A-Za-z0-9_\-]+)#', $trailer_url, $m) ) {
+            $embed = 'https://www.youtube.com/embed/' . $m[1];
+        }
+        $schema['trailer'] = [
+            '@type'       => 'VideoObject',
+            'name'        => sprintf('%s — Trailer', get_the_title($film_id)),
+            'description' => $meta['desc'] ?: '',
+            'thumbnailUrl' => $images ?: [],
+            'uploadDate'  => $release_iso ?: date('Y-m-d', strtotime( get_the_date('Y-m-d', $film_id) )),
+            'embedUrl'    => $embed,
+            'contentUrl'  => $trailer_url,
+        ];
+    }
+
+    echo "\n<script type=\"application/ld+json\">"
+        . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+        . "</script>\n";
+}, 5);
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * BreadcrumbList JSON-LD on single film + movies archive
+ * Helps Google show breadcrumb path in search results.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+add_action('wp_head', function() {
+    $ctx = bbs_seo_context();
+    if ( ! in_array($ctx, ['film_single', 'movies'], true) ) return;
+
+    $lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+    $home_label   = $lang === 'vi' ? 'Trang chủ' : 'Home';
+    $movies_label = $lang === 'vi' ? 'Phim' : 'Movies';
+
+    $items = [
+        [
+            '@type'    => 'ListItem',
+            'position' => 1,
+            'name'     => $home_label,
+            'item'     => home_url('/'),
+        ],
+        [
+            '@type'    => 'ListItem',
+            'position' => 2,
+            'name'     => $movies_label,
+            'item'     => get_post_type_archive_link('film'),
+        ],
+    ];
+
+    if ( $ctx === 'film_single' ) {
+        $items[] = [
+            '@type'    => 'ListItem',
+            'position' => 3,
+            'name'     => get_the_title(),
+            'item'     => get_permalink(),
+        ];
+    }
+
+    $schema = [
+        '@context'        => 'https://schema.org',
+        '@type'           => 'BreadcrumbList',
+        'itemListElement' => $items,
+    ];
+
+    echo "\n<script type=\"application/ld+json\">"
+        . wp_json_encode($schema, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES)
+        . "</script>\n";
+}, 6);
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Search Console + Bing Webmaster verification meta tags
+ *
+ * To activate after deploy:
+ *  1. Go to https://search.google.com/search-console → Add property `bluebells.vn`
+ *  2. Choose "HTML tag" verification → copy the content="..." value
+ *  3. Paste into BBS_GOOGLE_SITE_VERIFICATION constant below
+ *  4. Same for Bing Webmaster Tools (https://www.bing.com/webmasters)
+ * ──────────────────────────────────────────────────────────────────────── */
+
+// TODO: paste the verification token from Search Console here (the `content` value only, not the full tag).
+define('BBS_GOOGLE_SITE_VERIFICATION', '');
+define('BBS_BING_SITE_VERIFICATION', '');
+
+add_action('wp_head', function() {
+    if ( defined('BBS_GOOGLE_SITE_VERIFICATION') && BBS_GOOGLE_SITE_VERIFICATION ) {
+        printf('<meta name="google-site-verification" content="%s">' . "\n",
+            esc_attr(BBS_GOOGLE_SITE_VERIFICATION));
+    }
+    if ( defined('BBS_BING_SITE_VERIFICATION') && BBS_BING_SITE_VERIFICATION ) {
+        printf('<meta name="msvalidate.01" content="%s">' . "\n",
+            esc_attr(BBS_BING_SITE_VERIFICATION));
+    }
+}, 1);
+
+/* ─────────────────────────────────────────────────────────────────────────
+ * Favicon fallback — use WP custom logo if no site_icon is configured.
+ * (When Customize → Site Icon is set, WP auto-emits the proper links.)
+ * ──────────────────────────────────────────────────────────────────────── */
+
+add_action('wp_head', function() {
+    if ( has_site_icon() ) return; // WP handles it
+    if ( ! has_custom_logo() ) return;
+
+    $logo_id  = get_theme_mod('custom_logo');
+    $logo_url = wp_get_attachment_image_url($logo_id, 'full');
+    if ( ! $logo_url ) return;
+
+    printf('<link rel="icon" href="%s">' . "\n", esc_url($logo_url));
+    printf('<link rel="apple-touch-icon" href="%s">' . "\n", esc_url($logo_url));
+}, 8);
+
+/* ─────────────────────────────────────────────────────────────────────────
  * Cleanup noise tags (per SEO Brief §10.3)
  * ──────────────────────────────────────────────────────────────────────── */
 
@@ -383,6 +645,18 @@ add_filter('wp_sitemaps_post_types', function( $post_types ) {
     unset($post_types['post']);
     return $post_types;
 });
+
+// Exclude well-known WP default pages from sitemap. Filtering at query level
+// is more reliable than name-matching after-the-fact.
+add_filter('wp_sitemaps_posts_query_args', function( $args, $post_type ) {
+    if ( $post_type !== 'page' ) return $args;
+    $exclude_slugs = ['sample-page', 'privacy-policy'];
+    foreach ( $exclude_slugs as $slug ) {
+        $p = get_page_by_path($slug);
+        if ( $p ) $args['post__not_in'][] = $p->ID;
+    }
+    return $args;
+}, 10, 2);
 
 add_filter('wp_sitemaps_taxonomies', function( $taxonomies ) {
     unset($taxonomies['category']);
