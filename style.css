@@ -880,6 +880,15 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
   .contact-info-row:last-child { margin-bottom:0; }
   .contact-form-heading { font-size:16px; margin-bottom:18px; }
   .contact-headline { font-size:clamp(18px,5.5vw,26px); margin-bottom:32px; }
+  /* Submit button: center + larger tap target on mobile */
+  .contact-submit {
+    align-self:center;
+    margin:10px auto 0;
+    min-width:200px;
+    padding:14px 32px;
+    font-size:12px;
+  }
+  .contact-form-msg { text-align:center; }
 }
 @media(max-width:540px){
   .contact-section { padding:32px 0; }
@@ -998,15 +1007,9 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
   .film-overview-crew .crew-cast  { flex:1 1 100%; }
   .film-overview-synopsis { grid-area:synopsis; }
   .showing-inner{grid-template-columns:1fr;gap:16px}
-  /* Full-bleed poster/banner on mobile single-column for visual balance.
-     Negative margin escapes the section's 20px padding both sides. */
-  .showing-poster-wrap,
-  .showing-banner-wrap{
-    margin-left:-20px; margin-right:-20px;
-    max-width:none; width:auto;
-  }
-  .showing-poster-wrap img,
-  .showing-banner-wrap img{width:100%}
+  /* Poster smaller + centered on mobile single-column for visual balance */
+  .showing-poster-wrap{max-width:280px;margin-left:auto;margin-right:auto}
+  .showing-banner-wrap{max-width:480px;margin-left:auto;margin-right:auto}
   /* Buttons center-aligned on mobile for thumb-friendly UX */
   .showing-ctas{justify-content:center}
   .showing-ctas .btn-primary,
