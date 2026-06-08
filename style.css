@@ -1001,10 +1001,15 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
   .hero-slide .hero-eyebrow{color:var(--blue);justify-content:center;margin-bottom:10px}
   .hero-slide .hero-eyebrow::before{background:var(--blue)}
   .hero-slide .hero-title{color:var(--black);font-size:clamp(24px,6.5vw,36px);margin-bottom:16px}
-  .hero-slide .hero-ctas{flex-direction:row;gap:10px;align-items:center;justify-content:center;flex-wrap:wrap}
+  .hero-slide .hero-ctas{flex-direction:row;gap:10px;align-items:stretch;justify-content:center;flex-wrap:nowrap}
   .hero-slide .hero-ctas .btn-primary,.hero-slide .hero-ctas .btn-ghost{
-    width:auto;padding:10px 22px;font-size:10px;min-width:0;border-radius:4px;
+    padding:10px 22px;font-size:10px;min-width:0;border-radius:4px;
+    display:inline-flex;align-items:center;justify-content:center;
   }
+  /* When both Buy Tickets + Watch Trailer render, split width 50/50 */
+  .hero-slide .hero-ctas-pair{width:100%;max-width:380px;margin-left:auto;margin-right:auto}
+  .hero-slide .hero-ctas-pair .btn-primary,
+  .hero-slide .hero-ctas-pair .btn-ghost{flex:1 1 0;width:auto}
   .hero-slide .btn-ghost{color:rgba(0,0,0,0.65);border-color:rgba(0,0,0,0.18)}
   .hero-slide .btn-ghost:hover{color:var(--black);border-color:var(--blue)}
   .hero-arrow{width:32px;height:32px;background:rgba(0,0,0,0.4)}

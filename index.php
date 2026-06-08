@@ -44,12 +44,17 @@ if ( empty($banner_films) ) {
         <?php if ( $status_class === 'coming-soon' && $status ): ?>
           <p class="hero-eyebrow hero-eyebrow-below"><?php echo esc_html($status); ?><?php if($eyebrow_year): ?> (<?php echo esc_html($eyebrow_year); ?>)<?php endif; ?></p>
         <?php endif; ?>
-        <div class="hero-ctas">
-          <?php if ( $ticket ): ?>
+        <?php
+          // Buy Tickets button: only for films that are CURRENTLY showing AND
+          // have a ticket URL. Coming-soon / other statuses get Watch Trailer only.
+          $show_ticket = ( $status_class === 'now-showing' && $ticket );
+        ?>
+        <div class="hero-ctas<?php echo $show_ticket && $trailer ? ' hero-ctas-pair' : ''; ?>">
+          <?php if ( $show_ticket ): ?>
             <span class="btn-primary hero-ticket-btn" data-ticket="<?php echo esc_url($ticket); ?>"><?php bbs_e('Buy Tickets'); ?></span>
           <?php endif; ?>
           <?php if ( $trailer ): ?>
-            <span class="<?php echo $ticket ? 'btn-ghost' : 'btn-primary'; ?> hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>"><?php bbs_e('Watch Trailer'); ?></span>
+            <span class="<?php echo $show_ticket ? 'btn-ghost' : 'btn-primary'; ?> hero-trailer-btn" data-trailer="<?php echo esc_url($trailer); ?>"><?php bbs_e('Watch Trailer'); ?></span>
           <?php endif; ?>
         </div>
       </div>

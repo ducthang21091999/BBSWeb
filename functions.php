@@ -3,6 +3,9 @@
  * Bluebells Studios — functions.php
  */
 
+// SEO meta + Open Graph + JSON-LD (cookie-based i18n compatible)
+require_once get_template_directory() . '/inc/seo-meta.php';
+
 function bluebells_assets() {
     $theme_dir = get_stylesheet_directory();
     $css_ver = file_exists($theme_dir . '/style.css') ? filemtime($theme_dir . '/style.css') : '1.0.0';
