@@ -463,11 +463,23 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
 }
 
 .film-overview-synopsis {
-  font-size:15px; color:rgba(0,0,0,0.6); line-height:1.7;
-  font-weight:400; margin-bottom:0;
+  margin-top:8px;
+  padding-top:28px;
+  border-top:1px solid rgba(0,0,0,0.1);
 }
-.film-overview-synopsis p { margin-bottom:10px; }
-.film-overview-synopsis p:last-child { margin-bottom:0; }
+.synopsis-heading {
+  font-family:var(--font-display);
+  font-size:20px; font-weight:700;
+  color:var(--black);
+  margin:0 0 14px;
+  letter-spacing:-0.01em;
+}
+.synopsis-body {
+  font-size:15px; color:rgba(0,0,0,0.65); line-height:1.7;
+  font-weight:400;
+}
+.synopsis-body p { margin:0 0 12px; }
+.synopsis-body p:last-child { margin-bottom:0; }
 
 .film-overview-crew {
   margin-bottom:0;
@@ -1053,7 +1065,9 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
   .film-overview-meta{gap:2px 12px;margin-bottom:14px}
   .meta-label{font-size:8px}
   .meta-value{font-size:11px}
-  .film-overview-synopsis{font-size:12px;line-height:1.7;margin-bottom:8px}
+  .film-overview-synopsis{margin-top:4px;padding-top:20px}
+  .synopsis-heading{font-size:17px;margin-bottom:10px}
+  .synopsis-body{font-size:13px;line-height:1.7}
   .crew-block{padding:8px 0}
   .crew-block strong{font-size:12px;margin-bottom:2px}
   .crew-block span{font-size:12px;line-height:1.5}

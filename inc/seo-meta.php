@@ -52,9 +52,9 @@ function bbs_seo_meta_table() {
             ],
             'vi' => [
                 'title' => 'Bluebells Studios | Hãng Phim Điện Ảnh Việt Nam tại Sài Gòn',
-                'desc'  => 'Bluebells Studios là hãng phim điện ảnh Việt Nam có trụ sở tại Quận 1, TPHCM, kiến tạo những tác phẩm điện ảnh giàu chiều sâu và mang đậm bản sắc Việt.',
+                'desc'  => 'Bluebells Studios là hãng phim điện ảnh Việt Nam có trụ sở tại Quận 1, TPHCM, sản xuất những bộ phim điện ảnh giàu chiều sâu và mang đậm bản sắc Việt.',
                 'og_title' => 'Bluebells Studios | Hãng Phim Điện Ảnh Việt Nam',
-                'og_desc'  => 'Kiến tạo những tác phẩm điện ảnh Việt Nam giàu chiều sâu. Trụ sở tại Quận 1, TPHCM.',
+                'og_desc'  => 'Sản xuất những bộ phim điện ảnh Việt Nam giàu chiều sâu. Trụ sở tại Quận 1, TPHCM.',
                 'og_image_slug' => 'home-vi',
             ],
         ],
@@ -67,10 +67,10 @@ function bbs_seo_meta_table() {
                 'og_image_slug' => 'movies-en',
             ],
             'vi' => [
-                'title' => 'Tác Phẩm | Bluebells Studios — Phim Điện Ảnh Việt Nam',
-                'desc'  => 'Khám phá danh sách tác phẩm của Bluebells Studios — các bộ phim điện ảnh Việt Nam, phim ngắn và những dự án đang sản xuất từ hãng phim trẻ tại Sài Gòn.',
-                'og_title' => 'Tác Phẩm | Bluebells Studios',
-                'og_desc'  => 'Phim điện ảnh Việt Nam, phim ngắn và các dự án đang sản xuất bởi Bluebells Studios.',
+                'title' => 'Phim | Bluebells Studios — Hãng Phim Điện Ảnh Việt Nam',
+                'desc'  => 'Khám phá các bộ phim của Bluebells Studios — phim điện ảnh Việt Nam, phim ngắn và những dự án đang sản xuất từ hãng phim trẻ tại Sài Gòn.',
+                'og_title' => 'Phim | Bluebells Studios',
+                'og_desc'  => 'Các bộ phim điện ảnh Việt Nam, phim ngắn và dự án đang sản xuất bởi Bluebells Studios.',
                 'og_image_slug' => 'movies-vi',
             ],
         ],
@@ -146,7 +146,7 @@ function bbs_seo_film_meta( $post_id, $lang ) {
 
     return [
         'title'         => $title . ' | ' . $suffix,
-        'desc'          => $desc ?: ( $lang === 'vi' ? 'Tác phẩm điện ảnh của Bluebells Studios.' : 'A film by Bluebells Studios.' ),
+        'desc'          => $desc ?: ( $lang === 'vi' ? 'Bộ phim của Bluebells Studios.' : 'A film by Bluebells Studios.' ),
         'og_title'      => $title . ' | Bluebells Studios',
         'og_desc'       => $desc,
         'og_image_slug' => '', // poster fallback handled in bbs_seo_og_image_url()

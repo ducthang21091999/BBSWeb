@@ -40,6 +40,7 @@ return [
         'Written By'        => 'Biên Kịch',
         'Produced By'       => 'Nhà Sản Xuất',
         'Cast'              => 'Diễn Viên',
+        'Synopsis'          => 'Nội Dung Phim',
 
         // Meta labels (single-film)
         'Director'          => 'Đạo Diễn',

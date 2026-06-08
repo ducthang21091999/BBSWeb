@@ -120,7 +120,10 @@ $film_logo = get_film_logo_url(null,'large');
 
     <?php if($syn_short || $syn_full || $logline): ?>
     <div class="film-overview-synopsis">
-      <?php echo wp_kses_post($syn_full ?: $syn_short ?: $logline); ?>
+      <h3 class="synopsis-heading"><?php bbs_e('Synopsis'); ?></h3>
+      <div class="synopsis-body">
+        <?php echo wp_kses_post($syn_full ?: $syn_short ?: $logline); ?>
+      </div>
     </div>
     <?php endif; ?>
 
