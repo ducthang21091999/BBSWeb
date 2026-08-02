@@ -182,6 +182,39 @@ function bbs_seo_lang_variant_url( $lang ) {
  * Open Graph image URL — uploads/og/<slug>.jpg, falls back to logo
  * ──────────────────────────────────────────────────────────────────────── */
 
+/**
+ * Real pixel size of an OG image, so we never advertise 1200×630 for an image
+ * that isn't (the logo fallback and film banners are other ratios — a wrong
+ * declared size makes Facebook/Zalo crop or reject the preview).
+ *
+ * @return array|null [width, height], or null when the size can't be resolved.
+ */
+function bbs_seo_og_image_size( $url ) {
+    if ( ! $url ) return null;
+
+    // Resized WP images carry their dimensions in the filename: name-1920x1080.jpg
+    if ( preg_match('/-(\d+)x(\d+)\.[a-zA-Z]{3,4}$/', $url, $m) ) {
+        return [ (int) $m[1], (int) $m[2] ];
+    }
+
+    // Files we author under uploads/og/ are built to the 1200×630 OG spec
+    $upload = wp_upload_dir();
+    if ( strpos($url, trailingslashit($upload['baseurl']) . 'og/') === 0 ) {
+        return [1200, 630];
+    }
+
+    // Otherwise ask the media library for the original's size
+    $id = attachment_url_to_postid($url);
+    if ( $id ) {
+        $meta = wp_get_attachment_metadata($id);
+        if ( ! empty($meta['width']) && ! empty($meta['height']) ) {
+            return [ (int) $meta['width'], (int) $meta['height'] ];
+        }
+    }
+
+    return null;
+}
+
 function bbs_seo_og_image_url( $meta ) {
     // Single film: prefer banner (16:9 ratio matches OG spec better than 2:3 poster)
     if ( bbs_seo_context() === 'film_single' ) {
@@ -283,8 +316,11 @@ add_action('wp_head', function() {
     printf('<meta property="og:locale:alternate" content="%s">' . "\n", esc_attr($og_locale_alt));
     if ( $og_image ) {
         printf('<meta property="og:image" content="%s">' . "\n", esc_url($og_image));
-        echo '<meta property="og:image:width" content="1200">' . "\n";
-        echo '<meta property="og:image:height" content="630">' . "\n";
+        $og_size = bbs_seo_og_image_size($og_image);
+        if ( $og_size ) {
+            printf('<meta property="og:image:width" content="%d">' . "\n", $og_size[0]);
+            printf('<meta property="og:image:height" content="%d">' . "\n", $og_size[1]);
+        }
     }
 
     // ── Twitter Card ─────────────────────────────────────────────────────
