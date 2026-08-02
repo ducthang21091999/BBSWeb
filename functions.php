@@ -683,11 +683,49 @@ function get_film_age_rating( $post_id = null ) {
     ];
 }
 
-// Hide WordPress's default taxonomy meta box for film_genre — ACF multi_select handles it
+// Hide WordPress's default taxonomy meta boxes — ACF fields handle both.
+// film_genre  → ACF multi_select
+// film_status → ACF radio (single choice, required, defaults to Released)
 add_action('admin_menu', function() {
-    remove_meta_box('film_genrediv', 'film', 'side');  // hierarchical → uses *div suffix
+    remove_meta_box('film_genrediv', 'film', 'side');   // hierarchical → uses *div suffix
     remove_meta_box('tagsdiv-film_genre', 'film', 'side');  // non-hierarchical fallback
+    remove_meta_box('film_statusdiv', 'film', 'side');
+    remove_meta_box('tagsdiv-film_status', 'film', 'side');
 });
+
+/* ─── FILM STATUS: exactly one, never empty, defaults to Released ─────────── */
+
+// Term ID of the default status. Looked up by slug because term IDs differ
+// between local and production.
+function bbs_default_film_status_id() {
+    $term = get_term_by('slug', 'released', 'film_status');
+    return $term ? (int) $term->term_id : 0;
+}
+
+// Preselect "Released" on a film that has no status yet (new post, or one
+// imported without a status).
+add_filter('acf/load_value/key=field_film_status', function( $value, $post_id, $field ) {
+    if ( ! empty($value) ) return $value;
+    $default = bbs_default_film_status_id();
+    return $default ?: $value;
+}, 10, 3);
+
+// Safety net for saves that bypass ACF (quick edit, REST, importers): force
+// exactly one status term, falling back to Released when none is set.
+add_action('save_post_film', function( $post_id, $post, $update ) {
+    if ( wp_is_post_revision($post_id) || wp_is_post_autosave($post_id) ) return;
+    if ( $post->post_status === 'auto-draft' ) return;
+
+    $terms = wp_get_object_terms($post_id, 'film_status', ['fields' => 'ids']);
+    if ( is_wp_error($terms) ) return;
+
+    if ( empty($terms) ) {
+        $default = bbs_default_film_status_id();
+        if ( $default ) wp_set_object_terms($post_id, [$default], 'film_status', false);
+    } elseif ( count($terms) > 1 ) {
+        wp_set_object_terms($post_id, [ (int) $terms[0] ], 'film_status', false);
+    }
+}, 20, 3);
 
 // ─── ACF FIELD GROUP (registered via PHP — no sync needed) ───
 function bluebells_register_acf_fields() {
@@ -712,6 +750,11 @@ function bluebells_register_acf_fields() {
              'taxonomy'=>'film_genre','add_term'=>1,'save_terms'=>1,'load_terms'=>1,
              'return_format'=>'id','field_type'=>'multi_select','wrapper'=>['width'=>'50'],
              'instructions'=>'Chọn thể loại theo thứ tự ưu tiên. Cái nào chọn trước sẽ hiển thị trước trên web.'],
+            ['key'=>'field_film_status','label'=>'Trạng thái','name'=>'film_status_tax','type'=>'taxonomy',
+             'taxonomy'=>'film_status','add_term'=>0,'save_terms'=>1,'load_terms'=>1,
+             'return_format'=>'id','field_type'=>'radio','wrapper'=>['width'=>'25'],
+             'allow_null'=>0,'required'=>1,
+             'instructions'=>'Chọn 1 trạng thái. Mặc định: Released.'],
             ['key'=>'field_film_rating','label'=>'Phân Loại Độ Tuổi','name'=>'film_rating_tax','type'=>'taxonomy',
              'taxonomy'=>'film_age_rating','add_term'=>0,'save_terms'=>1,'load_terms'=>1,
              'return_format'=>'object','field_type'=>'radio','wrapper'=>['width'=>'25'],
