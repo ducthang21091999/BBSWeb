@@ -264,7 +264,7 @@ $in_dev = bluebells_get_films_sorted([
   ?>
   <div class="about-grid<?php echo $about_img_url ? ' has-image' : ''; ?>">
     <div class="about-text">
-      <h2 class="section-heading"><?php bbs_e('Our Story'); ?></h2>
+      <h1 class="section-heading"><?php bbs_e('Our Story'); ?></h1>
       <?php
         $about_body = bbs_content(
             'about_body',
@@ -280,7 +280,15 @@ $in_dev = bluebells_get_films_sorted([
     </div>
     <?php if ( $about_img_url ): ?>
     <div class="about-image">
-      <img src="<?php echo esc_url($about_img_url); ?>" alt="" loading="lazy">
+      <?php
+        // Prefer the alt text set in the media library; fall back to something
+        // descriptive rather than leaving the attribute empty.
+        $about_img_alt = $about_img_id ? trim( (string) get_post_meta($about_img_id, '_wp_attachment_image_alt', true) ) : '';
+        if ( ! $about_img_alt ) {
+            $about_img_alt = sprintf( bbs_t('Behind the scenes at %s'), get_bloginfo('name') );
+        }
+      ?>
+      <img src="<?php echo esc_url($about_img_url); ?>" alt="<?php echo esc_attr($about_img_alt); ?>" loading="lazy">
     </div>
     <?php endif; ?>
 

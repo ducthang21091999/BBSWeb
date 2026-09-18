@@ -948,7 +948,7 @@ function bbs_nav_fallback() {
     if ( get_page_by_path('partners') ) {
         $items[] = ['url' => home_url('/partners'), 'label' => 'Partners', 'active' => is_page('partners')];
     }
-    $items[] = ['url' => home_url('/contact'), 'label' => 'Contact', 'active' => is_page('contact')];
+    $items[] = ['url' => home_url('/contact/'), 'label' => 'Contact', 'active' => is_page('contact')];
     echo '<ul class="nav-links">';
     foreach ( $items as $item ) {
         printf(

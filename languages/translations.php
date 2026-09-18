@@ -106,6 +106,9 @@ return [
         'Poster, trailer and stills for press use. For anything else, contact the Bluebells Studios press team.'
             => 'Poster, trailer và hình ảnh phim dành cho báo chí. Cần thêm tư liệu, vui lòng liên hệ bộ phận truyền thông Bluebells Studios.',
 
+        // Alt text
+        'Behind the scenes at %s'  => 'Hậu trường tại %s',
+
         // Legal
         'Privacy Policy'         => 'Chính Sách Bảo Mật',
         'Terms of Use'           => 'Điều Khoản Sử Dụng',

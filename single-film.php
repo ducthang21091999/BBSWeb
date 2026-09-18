@@ -73,7 +73,7 @@ $film_logo = get_film_logo_url(null,'large');
 
     <div class="film-overview-info">
     <div class="film-overview-meta-col">
-      <h2 class="film-overview-title"><?php echo esc_html($main_title); ?></h2>
+      <h1 class="film-overview-title"><?php echo esc_html($main_title); ?></h1>
       <?php if($sub_title): ?>
         <p class="film-overview-vn"><?php echo esc_html($sub_title); ?></p>
       <?php endif; ?>

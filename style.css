@@ -1152,7 +1152,7 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
 }
 @media(max-width:540px){
   .press-actions { flex-direction:column; align-items:stretch; }
-  .press-actions a { text-align:center; }
+  .press-actions a { text-align:center; min-height:44px; padding:12px 24px; }
 }
 
 /* ─── FOOTER NAV ─── */
@@ -1164,11 +1164,12 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
 .footer-nav-links a {
   font-size:12px; letter-spacing:0.08em; text-transform:uppercase;
   color:rgba(242,242,242,0.55); text-decoration:none; transition:color 0.2s;
+  display:inline-flex; align-items:center; min-height:44px; padding:0 4px;
 }
 .footer-nav-links a:hover { color:#fff; }
 @media(max-width:768px){
   .footer-nav { margin-top:24px; }
-  .footer-nav-links { gap:8px 18px; }
+  .footer-nav-links { gap:0 18px; }
   .footer-nav-links a { font-size:11px; }
 }
 
@@ -1203,4 +1204,16 @@ h1,h2,h3,h4,h5,h6 { font-family: var(--font-display); font-weight: 700; line-hei
   .contact-cta .contact-label { font-size:10px; letter-spacing:0.18em; }
   .contact-cta .contact-ctas { padding:0 20px; }
   .contact-cta .contact-ctas .btn-primary { width:100%; min-width:0; }
+}
+
+
+/* Visible to screen readers and search engines, invisible on screen. */
+.sr-only {
+  position:absolute; width:1px; height:1px; padding:0; margin:-1px;
+  overflow:hidden; clip:rect(0 0 0 0); clip-path:inset(50%); white-space:nowrap; border:0;
+}
+
+/* Language switch: 44px tap target on touch screens without changing its look. */
+@media(max-width:768px){
+  .lang-switch { min-height:44px; display:inline-flex; align-items:center; }
 }
