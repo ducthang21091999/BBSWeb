@@ -12,11 +12,6 @@
 <body <?php body_class(); ?>>
 <?php wp_body_open(); ?>
 
-<?php
-// Active page detection
-$is_home  = is_front_page();
-$is_films = is_post_type_archive('film') || is_singular('film');
-?>
 
 <header id="site-header">
   <div class="header-inner">
@@ -32,11 +27,21 @@ $is_films = is_post_type_archive('film') || is_singular('film');
     </a>
 
     <nav class="site-nav" id="site-nav">
-      <div class="nav-links">
-        <a href="<?php echo home_url('/'); ?>"<?php if($is_home) echo ' class="active"'; ?>><?php bbs_e('Home'); ?></a>
-        <a href="<?php echo get_post_type_archive_link('film'); ?>"<?php if($is_films) echo ' class="active"'; ?>><?php bbs_e('Movies'); ?></a>
-        <a href="<?php echo home_url('/contact'); ?>"><?php bbs_e('Contact'); ?></a>
-      </div>
+      <?php
+      // Menu is editable in Appearance → Menus (location: Primary Navigation).
+      // Falls back to the built-in list when no menu is assigned yet.
+      if ( has_nav_menu('primary') ) {
+          wp_nav_menu([
+              'theme_location' => 'primary',
+              'container'      => false,
+              'menu_class'     => 'nav-links',
+              'depth'          => 1,
+              'fallback_cb'    => 'bbs_nav_fallback',
+          ]);
+      } else {
+          bbs_nav_fallback();
+      }
+      ?>
     </nav>
 
     <?php

@@ -142,8 +142,10 @@ function bluebells_register_site_content_settings() {
         'bluebells_slogan_en','bluebells_slogan_vi',
         'bluebells_about_body_en','bluebells_about_body_vi',
         'bluebells_about_image',
+        'bluebells_partners_intro_en','bluebells_partners_intro_vi',
     ] as $opt) {
-        $cb = strpos($opt, 'body') !== false ? 'sanitize_textarea_field' : 'sanitize_text_field';
+        $is_long = strpos($opt, 'body') !== false || strpos($opt, 'intro') !== false;
+        $cb = $is_long ? 'sanitize_textarea_field' : 'sanitize_text_field';
         register_setting('bluebells_site_content', $opt, ['sanitize_callback' => $cb]);
     }
 }
@@ -248,6 +250,27 @@ function bluebells_site_content_page() {
                 });
             });
             </script>
+
+            <h2 style="margin-top:32px;">Partners (đoạn mở đầu trang Đối tác)</h2>
+            <table class="form-table">
+                <tr>
+                    <th><label for="bluebells_partners_intro_vi">Giới thiệu (Tiếng Việt)</label></th>
+                    <td><textarea name="bluebells_partners_intro_vi" id="bluebells_partners_intro_vi"
+                        rows="3" class="large-text"><?php
+                            echo esc_textarea(get_option('bluebells_partners_intro_vi'));
+                        ?></textarea>
+                        <p class="description">2-3 dòng. Để trống → dùng mặc định trong code.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="bluebells_partners_intro_en">Giới thiệu (English)</label></th>
+                    <td><textarea name="bluebells_partners_intro_en" id="bluebells_partners_intro_en"
+                        rows="3" class="large-text"><?php
+                            echo esc_textarea(get_option('bluebells_partners_intro_en'));
+                        ?></textarea>
+                    </td>
+                </tr>
+            </table>
 
             <?php submit_button(); ?>
         </form>
@@ -850,14 +873,18 @@ function bluebells_register_partner_fields() {
         'style'      => 'default',
         'fields' => [
             ['key'=>'field_partner_order','label'=>'Số thứ tự','name'=>'partner_order','type'=>'number',
-             'instructions'=>'Số nhỏ hơn → hiển thị trước. VD: 1, 2, 3, 10, 20...','wrapper'=>['width'=>'25'],
+             'instructions'=>'Số nhỏ hơn → hiển thị trước. VD: 1, 2, 3, 10, 20...','wrapper'=>['width'=>'20'],
              'default_value'=>10,'min'=>0,'step'=>1],
+            ['key'=>'field_partner_group','label'=>'Nhóm đối tác','name'=>'partner_group','type'=>'select',
+             'instructions'=>'Quyết định đối tác nằm ở nhóm nào trên trang Partners.',
+             'wrapper'=>['width'=>'25'],'choices'=>bbs_partner_group_choices(),
+             'default_value'=>'cinema','allow_null'=>0,'multiple'=>0,'ui'=>0,'return_format'=>'value'],
             ['key'=>'field_partner_logo','label'=>'Logo','name'=>'partner_logo','type'=>'image',
              'instructions'=>'Logo của partner. PNG trong suốt khuyến nghị. Min 300×300px.',
-             'wrapper'=>['width'=>'45'],'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
+             'wrapper'=>['width'=>'30'],'return_format'=>'id','library'=>'all','preview_size'=>'thumbnail'],
             ['key'=>'field_partner_link','label'=>'Link website','name'=>'partner_link','type'=>'url',
              'instructions'=>'Khi click vào logo sẽ mở link này. Để trống = không click được.',
-             'wrapper'=>['width'=>'30'],'placeholder'=>'https://...'],
+             'wrapper'=>['width'=>'25'],'placeholder'=>'https://...'],
         ],
     ]);
 }
@@ -878,6 +905,60 @@ function get_partners_sorted() {
         return $oa <=> $ob;
     });
     return $partners;
+}
+
+/* ─── PARTNER GROUPS ──────────────────────────────────────────────────────── */
+
+// Slug → English label. Vietnamese comes from bbs_t() at render time.
+function bbs_partner_groups() {
+    return [
+        'cinema'        => 'Cinema Partners',
+        'media'         => 'Media Partners',
+        'international' => 'International Partners',
+        'brand'         => 'Brand Partners',
+    ];
+}
+
+// ACF select choices — same list, kept in one place.
+function bbs_partner_group_choices() {
+    return bbs_partner_groups();
+}
+
+// Partners split by group, order preserved, empty groups dropped.
+function get_partners_grouped() {
+    $grouped = array_fill_keys( array_keys( bbs_partner_groups() ), [] );
+    foreach ( get_partners_sorted() as $p ) {
+        $g = get_post_meta( $p->ID, 'partner_group', true );
+        if ( ! isset($grouped[$g]) ) $g = 'cinema';   // legacy rows have no group
+        $grouped[$g][] = $p;
+    }
+    return array_filter( $grouped );
+}
+
+/* ─── NAV FALLBACK ────────────────────────────────────────────────────────── */
+
+// Used when no menu is assigned in Appearance → Menus. Keeps the site usable
+// out of the box and matches what the header showed before menus existed.
+function bbs_nav_fallback() {
+    $items = [
+        ['url' => home_url('/'),                      'label' => 'Home',   'active' => is_front_page()],
+        ['url' => get_post_type_archive_link('film'), 'label' => 'Movies', 'active' => is_post_type_archive('film') || is_singular('film')],
+    ];
+    // Partners only appears once the page exists, so the menu never points at a 404.
+    if ( get_page_by_path('partners') ) {
+        $items[] = ['url' => home_url('/partners'), 'label' => 'Partners', 'active' => is_page('partners')];
+    }
+    $items[] = ['url' => home_url('/contact'), 'label' => 'Contact', 'active' => is_page('contact')];
+    echo '<ul class="nav-links">';
+    foreach ( $items as $item ) {
+        printf(
+            '<li><a href="%s"%s>%s</a></li>',
+            esc_url($item['url']),
+            $item['active'] ? ' class="active"' : '',
+            esc_html( bbs_t($item['label']) )
+        );
+    }
+    echo '</ul>';
 }
 
 // Helper: film logo URL — language-aware (VN default, EN fallback to VN)

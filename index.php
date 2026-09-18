@@ -187,7 +187,7 @@ $ns = $now_showing ? $now_showing[0] : null;
 </section>
 <?php endif; ?>
 
-<?php /* Coming Soon section — currently hidden. Uncomment to restore.
+<!-- COMING SOON -->
 <?php
 $coming = bluebells_get_films_sorted([
     'posts_per_page'=>4,
@@ -195,7 +195,7 @@ $coming = bluebells_get_films_sorted([
 ]);
 ?>
 <?php if ( $coming ): ?>
-<section class="section-pad section-gray section-border-top">
+<section class="section-pad <?php echo $bg(); ?> section-border-top">
   <h2 class="section-heading"><?php bbs_e('Coming Soon'); ?></h2>
   <div class="coming-grid">
     <?php foreach ( $coming as $film ): ?>
@@ -219,7 +219,42 @@ $coming = bluebells_get_films_sorted([
   </div>
 </section>
 <?php endif; ?>
-*/ ?>
+
+<!-- IN DEVELOPMENT / BLUEBELLS ORIGINALS -->
+<?php
+$in_dev = bluebells_get_films_sorted([
+    'posts_per_page' => 4,
+    'tax_query'      => [['taxonomy'=>'film_status','field'=>'slug','terms'=>'in-development']],
+]);
+?>
+<?php if ( $in_dev ): ?>
+<section class="section-pad <?php echo $bg(); ?> section-border-top">
+  <h2 class="section-heading"><?php bbs_e('In Development'); ?></h2>
+  <div class="coming-grid">
+    <?php foreach ( $in_dev as $film ):
+      $logline = get_film_meta('film_logline', $film->ID);
+    ?>
+    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
+    <article class="coming-card">
+      <div class="coming-poster">
+        <?php $poster = get_film_poster_url($film->ID,'film-poster'); if($poster): ?>
+          <img src="<?php echo esc_url($poster); ?>"
+               alt="<?php echo esc_attr($film->post_title); ?>" loading="lazy">
+        <?php endif; ?>
+      </div>
+      <div class="coming-info">
+        <p class="coming-date"><?php echo esc_html( get_film_genre_string($film->ID) ?: bbs_t('In Development') ); ?></p>
+        <h3 class="coming-title"><?php echo esc_html(get_film_main_title($film->ID)); ?></h3>
+        <?php if ( $logline ): ?>
+          <p class="coming-logline"><?php echo esc_html( wp_trim_words( wp_strip_all_tags($logline), 22 ) ); ?></p>
+        <?php endif; ?>
+      </div>
+    </article>
+    </a>
+    <?php endforeach; ?>
+  </div>
+</section>
+<?php endif; ?>
 
 <!-- ABOUT + CAPABILITIES -->
 <section class="section-pad <?php echo $bg(); ?> section-border-top">
@@ -277,29 +312,7 @@ $coming = bluebells_get_films_sorted([
 </section>
 
 <!-- PARTNERS -->
-<?php $partners = function_exists('get_partners_sorted') ? get_partners_sorted() : []; ?>
-<?php if ( $partners ): ?>
-<section class="section-pad <?php echo $bg(); ?> section-border-top">
-  <h2 class="section-heading"><?php bbs_e('Our Partners'); ?></h2>
-  <div class="partners-gallery">
-    <?php foreach ( $partners as $p ):
-      $logo_id  = get_field('partner_logo', $p->ID);
-      $logo_url = $logo_id ? wp_get_attachment_image_url($logo_id, 'medium') : '';
-      $link     = get_field('partner_link', $p->ID);
-      if ( !$logo_url ) continue;
-      $tag = $link ? 'a' : 'div';
-      $attr = $link
-        ? ' href="' . esc_url($link) . '" target="_blank" rel="noopener"'
-        : '';
-    ?>
-    <<?php echo $tag; ?> class="partner-tile<?php echo $link ? ' has-link' : ''; ?>"<?php echo $attr; ?> title="<?php echo esc_attr($p->post_title); ?>">
-      <img src="<?php echo esc_url($logo_url); ?>"
-           alt="<?php echo esc_attr($p->post_title); ?>" loading="lazy">
-    </<?php echo $tag; ?>>
-    <?php endforeach; ?>
-  </div>
-</section>
-<?php endif; ?>
+<?php get_template_part('template-parts/section-partners', null, ['bg' => $bg()]); ?>
 
 <!-- CONTACT CTA -->
 <?php get_template_part('template-parts/section-contact', null, ['bg' => $bg()]); ?>

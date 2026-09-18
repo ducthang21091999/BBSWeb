@@ -207,7 +207,29 @@ if ( $gallery_ids ): ?>
 </section>
 <?php endif; ?>
 
-<!-- ⑤ MORE FILMS — upcoming + now showing, soonest first -->
+<!-- ⑤ PRESS MATERIALS -->
+<?php if ( $press_kit || $trailer || $poster_url ): ?>
+<section class="section-pad section-dark section-border-top">
+  <h2 class="section-heading"><?php bbs_e('Press Materials'); ?></h2>
+  <div class="press-inner">
+    <p class="press-note"><?php bbs_e('Poster, trailer and stills for press use. For anything else, contact the Bluebells Studios press team.'); ?></p>
+    <div class="press-actions">
+      <?php if ( $press_kit ): ?>
+        <a href="<?php echo esc_url($press_kit); ?>" class="btn-primary" target="_blank" rel="noopener"><?php bbs_e('Download Press Kit'); ?></a>
+      <?php endif; ?>
+      <?php if ( $trailer ): ?>
+        <a href="<?php echo esc_url($trailer); ?>" class="btn-ghost" target="_blank" rel="noopener"><?php bbs_e('Watch Trailer'); ?></a>
+      <?php endif; ?>
+      <?php if ( $poster_url ): ?>
+        <a href="<?php echo esc_url($poster_url); ?>" class="btn-ghost" target="_blank" rel="noopener"><?php bbs_e('Download Poster'); ?></a>
+      <?php endif; ?>
+      <a href="<?php echo esc_url(home_url('/contact')); ?>" class="btn-ghost"><?php bbs_e('Press Inquiry'); ?></a>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
+
+<!-- ⑥ MORE FILMS — upcoming + now showing, soonest first -->
 <?php
 $current_id = get_the_ID();
 // Priority: now-showing + coming-soon first

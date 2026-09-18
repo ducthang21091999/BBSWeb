@@ -10,6 +10,7 @@ return [
         // Header / Navigation
         'Home'              => 'Trang Chủ',
         'Movies'            => 'Phim',
+        'Partners'          => 'Đối Tác',
         'Contact'           => 'Liên Hệ',
 
         // Hero CTAs
@@ -87,6 +88,27 @@ return [
         'International'                             => 'Quốc Tế',
         'Acquisition, co-production, festival & sales representation.'
             => 'Mua bản quyền, hợp tác sản xuất, đại diện liên hoan phim & bán hàng.',
+
+        // Partners page
+        'Cinema Partners'        => 'Đối Tác Rạp',
+        'Media Partners'         => 'Đối Tác Truyền Thông',
+        'International Partners' => 'Đối Tác Quốc Tế',
+        'Brand Partners'         => 'Đối Tác Thương Hiệu',
+
+        // In Development section
+        'In Development'         => 'Đang Phát Triển',
+
+        // Press materials (single-film)
+        'Press Materials'        => 'Tư Liệu Báo Chí',
+        'Download Press Kit'     => 'Tải Press Kit',
+        'Download Poster'        => 'Tải Poster',
+        'Press Inquiry'          => 'Liên Hệ Báo Chí',
+        'Poster, trailer and stills for press use. For anything else, contact the Bluebells Studios press team.'
+            => 'Poster, trailer và hình ảnh phim dành cho báo chí. Cần thêm tư liệu, vui lòng liên hệ bộ phận truyền thông Bluebells Studios.',
+
+        // Legal
+        'Privacy Policy'         => 'Chính Sách Bảo Mật',
+        'Terms of Use'           => 'Điều Khoản Sử Dụng',
 
         // About body — long copy
         "Founded in 2022, Bluebells Studios was built on the foundation of Mockingbird Pictures, one of Vietnam's leading international film distribution companies."
