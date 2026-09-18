@@ -63,7 +63,7 @@
 </section>
 
 <!-- CTA -->
-<section class="contact-section section-gray section-border-top">
+<section class="contact-section contact-cta section-gray section-border-top">
   <div class="contact-inner">
     <span class="contact-label"><?php bbs_e('Partner With Us'); ?></span>
     <h2 class="contact-headline"><?php bbs_e('For acquisition or partnership inquiries'); ?></h2>
