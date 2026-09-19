@@ -95,8 +95,9 @@ return [
         'International Partners' => 'Đối Tác Quốc Tế',
         'Brand Partners'         => 'Đối Tác Thương Hiệu',
 
-        // In Development section
+        // Film status terms (stored in English, shown translated)
         'In Development'         => 'Đang Phát Triển',
+        'Released'               => 'Đã Phát Hành',
 
         // Press materials (single-film)
         'Press Materials'        => 'Tư Liệu Báo Chí',

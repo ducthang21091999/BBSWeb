@@ -16,7 +16,7 @@
     <?php foreach($statuses as $term): ?>
     <a href="<?php echo get_post_type_archive_link('film').'?status='.esc_attr($term->slug); ?>"
        class="filter-tab<?php echo ($current_status===$term->slug)?' active':''; ?>">
-      <?php echo esc_html($term->name); ?>
+      <?php echo esc_html( bbs_t($term->name) ); ?>
     </a>
     <?php endforeach; ?>
   </div>

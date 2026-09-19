@@ -1312,7 +1312,20 @@ function bluebells_get_films_sorted( $extra_args = [] ) {
 function get_film_status_label( $post_id = null ) {
     if ( !$post_id ) $post_id = get_the_ID();
     $terms = get_the_terms( $post_id, 'film_status' );
-    return ($terms && !is_wp_error($terms)) ? $terms[0]->name : '';
+    if ( ! $terms || is_wp_error($terms) ) return '';
+    // Term names are stored once, in English, and translated at render time.
+    // Renaming the terms themselves would force one language on both versions
+    // of the site, and would break nothing visibly until the English pages
+    // started showing Vietnamese labels.
+    return bbs_t( $terms[0]->name );
+}
+
+// Raw term slug for the current film — the stable identifier, independent of
+// whatever the term is called on screen.
+function get_film_status_slug( $post_id = null ) {
+    if ( !$post_id ) $post_id = get_the_ID();
+    $terms = get_the_terms( $post_id, 'film_status' );
+    return ( $terms && ! is_wp_error($terms) ) ? $terms[0]->slug : '';
 }
 
 // Helper: film genre string
@@ -1345,12 +1358,20 @@ function get_film_genre_string( $post_id = null ) {
     return implode(' · ', array_map($get_name, $terms));
 }
 
-// Helper: status CSS class
+// Helper: status CSS class — keyed on the slug, which never changes, rather
+// than on the label, which is now translated.
 function get_film_status_class( $post_id = null ) {
-    $s = strtolower( get_film_status_label($post_id) );
-    if ( strpos($s,'showing')!==false )     return 'now-showing';
-    if ( strpos($s,'coming')!==false )      return 'coming-soon';
-    if ( strpos($s,'development')!==false ) return 'in-development';
+    $slug = get_film_status_slug( $post_id );
+    if ( in_array($slug, ['now-showing','coming-soon','in-development','released'], true) ) {
+        return $slug;
+    }
+    // Terms created by hand may carry a different slug; fall back to matching
+    // the English term name, as this function used to do.
+    $terms = get_the_terms( $post_id ?: get_the_ID(), 'film_status' );
+    $name  = ( $terms && ! is_wp_error($terms) ) ? strtolower($terms[0]->name) : '';
+    if ( strpos($name,'showing')!==false )     return 'now-showing';
+    if ( strpos($name,'coming')!==false )      return 'coming-soon';
+    if ( strpos($name,'development')!==false ) return 'in-development';
     return 'released';
 }
 
