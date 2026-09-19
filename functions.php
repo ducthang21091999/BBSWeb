@@ -423,50 +423,130 @@ function bluebells_handle_contact_form() {
 add_action('wp_ajax_bluebells_contact', 'bluebells_handle_contact_form');
 add_action('wp_ajax_nopriv_bluebells_contact', 'bluebells_handle_contact_form');
 
-// ─── I18N HELPERS ───
-// Allowed UI language codes
+// ─── I18N: LANGUAGE IN THE URL ───
+//
+// Vietnamese lives at the root, English under /en/. The language is carried by
+// the URL and nothing else — no cookie, no query parameter. That is what makes
+// the site safe to put behind a page cache: one address always renders one
+// language, so a cached copy can never be served to the wrong visitor.
+
+// Allowed UI language codes. The first one is the default and takes no prefix.
 function bbs_allowed_langs() { return ['vi', 'en']; }
+function bbs_default_lang()  { return 'vi'; }
 
-// Detect current language. Priority: ?lang= GET > cookie > Polylang > default 'vi'.
+/**
+ * Strip the /en prefix from the request before WordPress parses it.
+ *
+ * Runs on init, which is before WP::parse_request(), so every template,
+ * permalink and query resolves exactly as it does in Vietnamese. Only the
+ * language flag differs.
+ */
+function bbs_strip_lang_prefix() {
+    if ( is_admin() ) return;
+
+    $uri  = $_SERVER['REQUEST_URI'] ?? '/';
+    $path = (string) parse_url($uri, PHP_URL_PATH);
+    $qs   = (string) parse_url($uri, PHP_URL_QUERY);
+
+    if ( preg_match('#^/en(/.*)?$#', $path, $m) ) {
+        $GLOBALS['bbs_url_lang'] = 'en';
+        $rest = ( isset($m[1]) && $m[1] !== '' ) ? $m[1] : '/';
+        // /en and /en/ would otherwise serve the same page at two addresses.
+        $GLOBALS['bbs_lang_root_needs_slash'] = ( $path === '/en' );
+        $_SERVER['REQUEST_URI'] = $rest . ( $qs !== '' ? '?' . $qs : '' );
+    }
+}
+add_action('init', 'bbs_strip_lang_prefix', 0);
+
+// Current language — decided solely by the URL prefix.
 function bbs_current_lang() {
-    static $lang = null;
-    if ( $lang !== null ) return $lang;
-
-    // 1. Explicit URL param (user just clicked switcher)
-    if ( isset($_GET['lang']) && in_array($_GET['lang'], bbs_allowed_langs(), true) ) {
-        return $lang = $_GET['lang'];
+    if ( ! empty($GLOBALS['bbs_url_lang']) && in_array($GLOBALS['bbs_url_lang'], bbs_allowed_langs(), true) ) {
+        return $GLOBALS['bbs_url_lang'];
     }
-
-    // 2. Cookie (persistent user choice)
-    if ( isset($_COOKIE['bbs_lang']) && in_array($_COOKIE['bbs_lang'], bbs_allowed_langs(), true) ) {
-        return $lang = $_COOKIE['bbs_lang'];
-    }
-
-    // 3. Polylang (if configured)
-    if ( function_exists('pll_current_language') ) {
-        $code = pll_current_language('slug');
-        if ( $code && in_array($code, bbs_allowed_langs(), true) ) return $lang = $code;
-    }
-
-    return $lang = 'vi';
+    return bbs_default_lang();
 }
 
-// Persist ?lang= param as cookie so it sticks across navigation
-add_action('init', function() {
-    if ( isset($_GET['lang']) && in_array($_GET['lang'], bbs_allowed_langs(), true) ) {
-        // Use empty domain so cookie works for current host (localhost, .local, etc.)
-        setcookie('bbs_lang', $_GET['lang'], time() + 30 * DAY_IN_SECONDS, '/', '', false, false);
-        $_COOKIE['bbs_lang'] = $_GET['lang'];  // make immediately readable in this request
+// home_url() without the /en prefix, whatever the current language.
+function bbs_home_url_raw( $path = '/' ) {
+    $GLOBALS['bbs_home_url_unfiltered'] = true;
+    $url = home_url($path);
+    $GLOBALS['bbs_home_url_unfiltered'] = false;
+    return $url;
+}
+
+/**
+ * Absolute URL of a path in a given language.
+ * bbs_lang_permalink('en', '/movies/') → https://bluebells.vn/en/movies/
+ */
+function bbs_lang_permalink( $lang, $path = null ) {
+    if ( $path === null ) {
+        $path = (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH );
     }
+    $path   = '/' . ltrim($path, '/');
+    $base   = untrailingslashit( bbs_home_url_raw('/') );
+    $prefix = ( $lang !== bbs_default_lang() ) ? '/' . $lang : '';
+    return $base . $prefix . $path;
+}
+
+/**
+ * Prefix every front-end link with /en while an English page is being built.
+ * get_permalink(), get_post_type_archive_link() and home_url() all route
+ * through this, so one filter covers the whole site.
+ *
+ * admin_url() and site_url() are deliberately untouched: wp-admin, the login
+ * form and admin-ajax.php (which the contact form posts to) must stay at the
+ * root.
+ */
+function bbs_filter_home_url( $url, $path = '', $scheme = null, $blog_id = null ) {
+    if ( ! empty($GLOBALS['bbs_home_url_unfiltered']) ) return $url;
+    if ( is_admin() || wp_doing_ajax() || wp_doing_cron() ) return $url;
+    if ( defined('REST_REQUEST') && REST_REQUEST ) return $url;
+    if ( bbs_current_lang() === bbs_default_lang() ) return $url;
+
+    $home = untrailingslashit( bbs_home_url_raw('/') );
+    if ( strpos($url, $home) !== 0 ) return $url;
+
+    $rest = substr($url, strlen($home));
+    if ( $rest === '' ) $rest = '/';
+    // Query-only or fragment-only remainders need a slash before the prefix.
+    if ( $rest[0] !== '/' ) $rest = '/' . $rest;
+    if ( $rest === '/en' || strpos($rest, '/en/') === 0 ) return $url;
+    if ( strpos($rest, '/wp-json') === 0 ) return $url;
+
+    return $home . '/en' . $rest;
+}
+add_filter('home_url', 'bbs_filter_home_url', 10, 4);
+
+/**
+ * Old ?lang= links keep working: send them to the path form once, with a 301,
+ * so search engines and anyone who bookmarked one land on the real address.
+ */
+add_action('template_redirect', function() {
+    if ( is_admin() ) return;
+
+    // /en → /en/
+    if ( ! empty($GLOBALS['bbs_lang_root_needs_slash']) ) {
+        wp_safe_redirect( bbs_lang_permalink('en', '/'), 301 );
+        exit;
+    }
+
+    if ( ! isset($_GET['lang']) ) return;
+
+    $lang = in_array($_GET['lang'], bbs_allowed_langs(), true) ? $_GET['lang'] : bbs_default_lang();
+    $path = (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH );
+
+    $query = $_GET;
+    unset($query['lang']);
+    $qs = $query ? '?' . http_build_query($query) : '';
+
+    wp_safe_redirect( bbs_lang_permalink($lang, $path) . $qs, 301 );
+    exit;
 }, 1);
 
-// Build URL for switching to a target language (preserves current path + query)
+// Build the URL of the current page in the other language.
 function bbs_lang_switch_url( $target ) {
     if ( ! in_array($target, bbs_allowed_langs(), true) ) return '#';
-    $request = $_SERVER['REQUEST_URI'] ?? '/';
-    // Strip existing lang= param to avoid duplicates
-    $request = remove_query_arg('lang', $request);
-    return add_query_arg('lang', $target, $request);
+    return bbs_lang_permalink( $target );
 }
 
 // Translate UI string using languages/translations.php array. Falls back to original if missing or empty.
@@ -945,7 +1025,8 @@ function bbs_nav_fallback() {
         ['url' => get_post_type_archive_link('film'), 'label' => 'Movies', 'active' => is_post_type_archive('film') || is_singular('film')],
     ];
     // Partners only appears once the page exists, so the menu never points at a 404.
-    if ( get_page_by_path('partners') ) {
+    $partners_page = get_page_by_path('partners');
+    if ( $partners_page && get_post_status($partners_page) === 'publish' ) {
         $items[] = ['url' => home_url('/partners'), 'label' => 'Partners', 'active' => is_page('partners')];
     }
     $items[] = ['url' => home_url('/contact/'), 'label' => 'Contact', 'active' => is_page('contact')];

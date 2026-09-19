@@ -109,7 +109,10 @@ $social = [
         // Pages only appear once they actually exist, so no dead links.
         foreach ( [ 'partners' => 'Partners', 'contact' => 'Contact', 'privacy-policy' => 'Privacy Policy', 'terms-of-use' => 'Terms of Use' ] as $slug => $label ) {
             $page = get_page_by_path( $slug );
-            if ( $page ) $footer_links[] = [ 'url' => get_permalink($page), 'label' => bbs_t($label) ];
+            // Drafts and pending pages have no public URL yet — skip them.
+            if ( $page && get_post_status($page) === 'publish' ) {
+                $footer_links[] = [ 'url' => get_permalink($page), 'label' => bbs_t($label) ];
+            }
         }
         echo '<ul class="footer-nav-links">';
         foreach ( $footer_links as $l ) {

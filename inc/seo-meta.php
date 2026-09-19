@@ -4,7 +4,7 @@
  *
  * Cookie-based i18n compatible. All meta is rendered per current language
  * detected by bbs_current_lang(). Both EN and VI variants of every URL are
- * advertised via hreflang using ?lang= variants so Google can crawl them
+ * advertised via hreflang using /en/ paths so Google can crawl them
  * independently (the bot ignores cookies between requests).
  *
  * Production domain: bluebells.vn (canonical/JSON-LD use home_url() so they
@@ -158,24 +158,28 @@ function bbs_seo_film_meta( $post_id, $lang ) {
  * ──────────────────────────────────────────────────────────────────────── */
 
 /**
- * Clean URL for current request (no ?lang param, no trailing junk).
+ * Canonical URL of the current request, in the language being served.
+ *
+ * REQUEST_URI has already had the /en prefix stripped by the time this runs,
+ * so the prefix is put back from the current language. That is the whole fix
+ * for the old behaviour, where the English page declared the Vietnamese page
+ * as its canonical and told Google to ignore it.
  */
 function bbs_seo_clean_current_url() {
-    $path = strtok($_SERVER['REQUEST_URI'] ?? '/', '?');
-    // Strip lang param if user landed on a switch URL — we want clean canonical
+    $path = (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH );
+    // Legacy ?lang= is a redirect, never part of a canonical.
     $query = $_GET;
     unset($query['lang']);
     $qs = $query ? '?' . http_build_query($query) : '';
-    return home_url( $path . $qs );
+    return bbs_lang_permalink( bbs_current_lang(), $path ) . $qs;
 }
 
 /**
- * URL variant for a specific language (adds ?lang=xx to canonical).
- * Used for hreflang alternates so Google can crawl each language version.
+ * URL of the current page in a specific language, used for hreflang.
  */
 function bbs_seo_lang_variant_url( $lang ) {
-    $base = bbs_seo_clean_current_url();
-    return add_query_arg('lang', $lang, $base);
+    $path = (string) parse_url( $_SERVER['REQUEST_URI'] ?? '/', PHP_URL_PATH );
+    return bbs_lang_permalink( $lang, $path );
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -295,13 +299,13 @@ add_action('wp_head', function() {
     }
     printf('<link rel="canonical" href="%s">' . "\n", esc_url($canonical));
 
-    // ── hreflang (cookie-based i18n: advertise ?lang= variants) ──────────
+    // ── hreflang: one address per language, Vietnamese is x-default ──────
     $url_vi = bbs_seo_lang_variant_url('vi');
     $url_en = bbs_seo_lang_variant_url('en');
     printf('<link rel="alternate" hreflang="vi" href="%s">' . "\n", esc_url($url_vi));
     printf('<link rel="alternate" hreflang="en" href="%s">' . "\n", esc_url($url_en));
-    // x-default → clean URL (defaults to VI per bbs_current_lang())
-    printf('<link rel="alternate" hreflang="x-default" href="%s">' . "\n", esc_url($canonical));
+    // x-default → the Vietnamese address, not whichever page is being served
+    printf('<link rel="alternate" hreflang="x-default" href="%s">' . "\n", esc_url($url_vi));
 
     // ── Open Graph ────────────────────────────────────────────────────────
     printf('<meta property="og:site_name" content="%s">' . "\n", esc_attr($site_name));
