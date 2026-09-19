@@ -45,16 +45,16 @@ function bbs_seo_meta_table() {
         'home' => [
             'en' => [
                 'title' => 'Bluebells Studios | Vietnamese Feature Film Production House',
-                'desc'  => 'Bluebells Studios is a Ho Chi Minh City-based film production house creating Vietnamese feature films with cinematic depth and authentic storytelling. Based in District 1, Saigon.',
+                'desc'  => 'Bluebells Studios is a Ho Chi Minh City-based film production house creating Vietnamese feature films with cinematic depth and authentic storytelling. Based in District 7, Ho Chi Minh City.',
                 'og_title' => 'Bluebells Studios | Vietnamese Feature Film Production',
-                'og_desc'  => 'Crafting Vietnamese feature films with cinematic depth. Based in Saigon, District 1.',
+                'og_desc'  => 'Crafting Vietnamese feature films with cinematic depth. Based in District 7, Ho Chi Minh City.',
                 'og_image_slug' => 'home-en',
             ],
             'vi' => [
                 'title' => 'Bluebells Studios | Hãng Phim Điện Ảnh Việt Nam tại Sài Gòn',
-                'desc'  => 'Bluebells Studios là hãng phim điện ảnh Việt Nam có trụ sở tại Quận 1, TPHCM, sản xuất những bộ phim điện ảnh giàu chiều sâu và mang đậm bản sắc Việt.',
+                'desc'  => 'Bluebells Studios là hãng phim điện ảnh Việt Nam có trụ sở tại Quận 7, TPHCM, sản xuất những bộ phim điện ảnh giàu chiều sâu và mang đậm bản sắc Việt.',
                 'og_title' => 'Bluebells Studios | Hãng Phim Điện Ảnh Việt Nam',
-                'og_desc'  => 'Sản xuất những bộ phim điện ảnh Việt Nam giàu chiều sâu. Trụ sở tại Quận 1, TPHCM.',
+                'og_desc'  => 'Sản xuất những bộ phim điện ảnh Việt Nam giàu chiều sâu. Trụ sở tại Quận 7, TPHCM.',
                 'og_image_slug' => 'home-vi',
             ],
         ],
@@ -77,15 +77,15 @@ function bbs_seo_meta_table() {
         'contact' => [
             'en' => [
                 'title' => 'Contact | Bluebells Studios — Saigon Film Production House',
-                'desc'  => 'Get in touch with Bluebells Studios in District 1, Ho Chi Minh City for film inquiries, casting calls, press, distribution, and creative collaborations.',
-                'og_title' => 'Contact Bluebells Studios | District 1, Saigon',
+                'desc'  => 'Get in touch with Bluebells Studios in District 7, Ho Chi Minh City for film inquiries, casting calls, press, distribution, and creative collaborations.',
+                'og_title' => 'Contact Bluebells Studios | District 7, Ho Chi Minh City',
                 'og_desc'  => 'Inquiries, casting, press, and collaborations.',
                 'og_image_slug' => 'contact-en',
             ],
             'vi' => [
-                'title' => 'Liên Hệ | Bluebells Studios — Hãng Phim tại Quận 1, TPHCM',
-                'desc'  => 'Liên hệ Bluebells Studios tại Quận 1, TPHCM cho các nhu cầu hợp tác sản xuất phim, casting, báo chí, phát hành và các dự án sáng tạo.',
-                'og_title' => 'Liên Hệ Bluebells Studios | Quận 1, TPHCM',
+                'title' => 'Liên Hệ | Bluebells Studios — Hãng Phim tại Quận 7, TPHCM',
+                'desc'  => 'Liên hệ Bluebells Studios tại Quận 7, TPHCM cho các nhu cầu hợp tác sản xuất phim, casting, báo chí, phát hành và các dự án sáng tạo.',
+                'og_title' => 'Liên Hệ Bluebells Studios | Quận 7, TPHCM',
                 'og_desc'  => 'Hợp tác sản xuất, casting, báo chí, phát hành.',
                 'og_image_slug' => 'contact-vi',
             ],
@@ -199,6 +199,37 @@ function bbs_seo_film_meta( $post_id, $lang ) {
         'og_desc'       => $desc,
         'og_image_slug' => '', // poster fallback handled in bbs_seo_og_image_url()
     ];
+}
+
+/**
+ * PostalAddress for the Organization schema, read from Settings → Contact Info.
+ *
+ * The office address used to be hardcoded here and said District 1 while the
+ * site displayed District 7. Reading the option means one place to change.
+ *
+ * schema.org wants addressLocality to be the city, so the street and district
+ * stay together in streetAddress.
+ */
+function bbs_seo_org_address() {
+    $address = [
+        '@type'          => 'PostalAddress',
+        'addressLocality'=> 'Thành phố Hồ Chí Minh',
+        'addressCountry' => 'VN',
+    ];
+
+    $raw = trim( (string) get_option('bluebells_contact_address') );
+    if ( $raw === '' ) return $address;
+
+    // Drop a trailing ", Ho Chi Minh City" / ", TPHCM" — it is already the locality.
+    $street = preg_replace(
+        '/,\s*(Thành phố\s+|TP\.?\s*)?(Ho Chi Minh City|Hồ Chí Minh|HCM|TPHCM|Sài Gòn|Saigon)\s*$/iu',
+        '',
+        $raw
+    );
+    $street = trim( (string) $street, " ,\t\n" );
+    if ( $street !== '' ) $address['streetAddress'] = $street;
+
+    return $address;
 }
 
 /* ─────────────────────────────────────────────────────────────────────────
@@ -414,26 +445,29 @@ add_action('wp_head', function() {
         'alternateName'=> 'Hãng phim Bluebells',
         'url'          => $home,
         'description'  => 'Vietnamese feature film production house based in Ho Chi Minh City',
-        'address'      => [
-            '@type'           => 'PostalAddress',
-            'addressLocality' => 'Quận 1',
-            'addressRegion'   => 'TPHCM',
-            'addressCountry'  => 'VN',
-            // TODO: add streetAddress + postalCode when finalized
-        ],
+        'address'      => bbs_seo_org_address(),
         'areaServed'   => 'VN',
         'knowsAbout'   => [
             'Vietnamese cinema',
             'Feature film production',
             'Independent film',
         ],
-        // TODO: replace with real social profile URLs
-        'sameAs'       => [
-            'https://www.facebook.com/bluebellsstudios',
-            'https://www.instagram.com/bluebellsstudios',
-            'https://www.youtube.com/@bluebellsstudios',
-        ],
     ];
+
+    // Phone, email and social profiles come from Settings → Contact Info, so the
+    // schema can never drift from what the site actually displays.
+    $phone = trim( (string) get_option('bluebells_contact_phone') );
+    if ( $phone ) $schema['telephone'] = $phone;
+
+    $email = trim( (string) get_option('bluebells_contact_email') );
+    if ( is_email($email) ) $schema['email'] = $email;
+
+    $same_as = array_values( array_filter( array_map( 'trim', [
+        (string) get_option('bluebells_social_facebook'),
+        (string) get_option('bluebells_social_tiktok'),
+        (string) get_option('bluebells_social_youtube'),
+    ] ) ) );
+    if ( $same_as ) $schema['sameAs'] = $same_as;
     if ( $logo )     $schema['logo']  = $logo;
     if ( $og_image ) $schema['image'] = $og_image;
 
