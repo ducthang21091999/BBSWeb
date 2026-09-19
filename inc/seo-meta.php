@@ -114,6 +114,51 @@ function bbs_seo_current_meta() {
 }
 
 /**
+ * Film title in a given language. post_title holds the Vietnamese title,
+ * the ACF field film_en_title holds the English one. Either may be missing,
+ * in which case the other is used rather than showing nothing.
+ */
+function bbs_seo_film_title( $post_id, $lang ) {
+    $vn = (string) get_post_field('post_title', $post_id);
+    $en = (string) get_post_meta($post_id, 'film_en_title', true);
+    return $lang === 'en' ? ( $en ?: $vn ) : ( $vn ?: $en );
+}
+
+/**
+ * The title in the OTHER language, for schema.org alternateName. This is what
+ * tells Google that "Lam Giau Voi Ma" and "Betting with Ghost" are one film.
+ */
+function bbs_seo_film_alt_title( $post_id, $lang ) {
+    $vn = (string) get_post_field('post_title', $post_id);
+    $en = (string) get_post_meta($post_id, 'film_en_title', true);
+    $alt = $lang === 'en' ? $vn : $en;
+    $main = bbs_seo_film_title( $post_id, $lang );
+    return ( $alt && $alt !== $main ) ? $alt : '';
+}
+
+/**
+ * schema.org inLanguage wants a BCP-47 code, not the free text an editor types
+ * into the "Ngon ngu" field.
+ */
+function bbs_seo_language_code( $raw ) {
+    $raw = trim( (string) $raw );
+    if ( $raw === '' ) return '';
+    if ( preg_match('/^[a-z]{2}(-[A-Za-z]{2,4})?$/', $raw) ) return $raw;
+    $map = [
+        'tieng viet' => 'vi', 'viet nam' => 'vi', 'vietnamese' => 'vi',
+        'english'    => 'en', 'tieng anh' => 'en',
+        'korean'     => 'ko', 'tieng han' => 'ko',
+        'japanese'   => 'ja', 'tieng nhat' => 'ja',
+        'chinese'    => 'zh', 'tieng trung' => 'zh',
+        'thai'       => 'th', 'tieng thai' => 'th',
+        'french'     => 'fr', 'tieng phap' => 'fr',
+    ];
+    $key = remove_accents( mb_strtolower($raw) );
+    $key = trim( preg_replace('/\s+/', ' ', $key) );
+    return $map[$key] ?? '';
+}
+
+/**
  * Meta for /movies/<slug>/ single film. Picks bilingual synopsis from ACF
  * so VI users see Vietnamese description, EN users see English.
  *
@@ -122,7 +167,10 @@ function bbs_seo_current_meta() {
  *  - lang=en: film_synopsis_short → film_synopsis_short_vn → post_excerpt → post_content (155 chars)
  */
 function bbs_seo_film_meta( $post_id, $lang ) {
-    $title = get_post_field('post_title', $post_id);
+    // Title in the language being served. The English page used to advertise the
+    // Vietnamese title in <title> and og:title while its H1 said the English one,
+    // which cost it every search for the international title.
+    $title = bbs_seo_film_title( $post_id, $lang );
 
     $syn_en = trim( wp_strip_all_tags( get_post_meta($post_id, 'film_synopsis_short', true) ) );
     $syn_vn = trim( wp_strip_all_tags( get_post_meta($post_id, 'film_synopsis_short_vn', true) ) );
@@ -485,8 +533,11 @@ add_action('wp_head', function() {
     $rating_terms = wp_get_post_terms($film_id, 'film_age_rating', ['fields' => 'names']);
     $content_rating = ( ! is_wp_error($rating_terms) && ! empty($rating_terms) ) ? $rating_terms[0] : '';
 
-    // Original language
-    $orig_lang = trim( get_post_meta($film_id, 'film_language', true) );
+    // Language being served — the schema must match the page it sits on.
+    $schema_lang = function_exists('bbs_current_lang') ? bbs_current_lang() : 'vi';
+
+    // Original language of the film itself, normalised to a BCP-47 code.
+    $orig_lang = bbs_seo_language_code( get_post_meta($film_id, 'film_language', true) );
 
     // Trailer URL → VideoObject (Google understands this nested)
     $trailer_url = function_exists('get_film_trailer_url') ? get_film_trailer_url($film_id) : '';
@@ -496,9 +547,11 @@ add_action('wp_head', function() {
         '@type'       => 'Movie',
         '@id'         => $url . '#movie',
         'url'         => $url,
-        'name'        => get_the_title($film_id),
+        'name'        => bbs_seo_film_title($film_id, $schema_lang),
         'description' => $meta['desc'] ?: '',
     ];
+    $alt_title = bbs_seo_film_alt_title($film_id, $schema_lang);
+    if ( $alt_title ) $schema['alternateName'] = $alt_title;
     if ( $images )           $schema['image']           = count($images) === 1 ? $images[0] : $images;
     if ( $director )         $schema['director']        = ['@type' => 'Person', 'name' => $director];
     if ( $writer )           $schema['author']          = ['@type' => 'Person', 'name' => $writer];
@@ -528,7 +581,7 @@ add_action('wp_head', function() {
         }
         $schema['trailer'] = [
             '@type'       => 'VideoObject',
-            'name'        => sprintf('%s — Trailer', get_the_title($film_id)),
+            'name'        => sprintf('%s — Trailer', bbs_seo_film_title($film_id, $schema_lang)),
             'description' => $meta['desc'] ?: '',
             'thumbnailUrl' => $images ?: [],
             'uploadDate'  => $release_iso ?: date('Y-m-d', strtotime( get_the_date('Y-m-d', $film_id) )),
