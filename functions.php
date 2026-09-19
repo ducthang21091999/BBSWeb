@@ -458,6 +458,10 @@ function bbs_strip_lang_prefix() {
 }
 add_action('init', 'bbs_strip_lang_prefix', 0);
 
+// TẠM THỜI: ép địa chỉ site về http trong lúc chờ chứng chỉ SSL.
+// Xoá dòng này và file inc/temp-force-http.php ngay khi chứng chỉ được cấp.
+require_once get_template_directory() . '/inc/temp-force-http.php';
+
 // Current language — decided solely by the URL prefix.
 function bbs_current_lang() {
     if ( ! empty($GLOBALS['bbs_url_lang']) && in_array($GLOBALS['bbs_url_lang'], bbs_allowed_langs(), true) ) {
