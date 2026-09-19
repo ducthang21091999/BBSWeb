@@ -220,41 +220,6 @@ $coming = bluebells_get_films_sorted([
 </section>
 <?php endif; ?>
 
-<!-- IN DEVELOPMENT / BLUEBELLS ORIGINALS -->
-<?php
-$in_dev = bluebells_get_films_sorted([
-    'posts_per_page' => 4,
-    'tax_query'      => [['taxonomy'=>'film_status','field'=>'slug','terms'=>'in-development']],
-]);
-?>
-<?php if ( $in_dev ): ?>
-<section class="section-pad <?php echo $bg(); ?> section-border-top">
-  <h2 class="section-heading"><?php bbs_e('In Development'); ?></h2>
-  <div class="coming-grid">
-    <?php foreach ( $in_dev as $film ):
-      $logline = get_film_meta('film_logline', $film->ID);
-    ?>
-    <a href="<?php echo get_permalink($film->ID); ?>" class="film-card-link">
-    <article class="coming-card">
-      <div class="coming-poster">
-        <?php $poster = get_film_poster_url($film->ID,'film-poster'); if($poster): ?>
-          <img src="<?php echo esc_url($poster); ?>"
-               alt="<?php echo esc_attr($film->post_title); ?>" loading="lazy">
-        <?php endif; ?>
-      </div>
-      <div class="coming-info">
-        <p class="coming-date"><?php echo esc_html( get_film_genre_string($film->ID) ?: bbs_t('In Development') ); ?></p>
-        <h3 class="coming-title"><?php echo esc_html(get_film_main_title($film->ID)); ?></h3>
-        <?php if ( $logline ): ?>
-          <p class="coming-logline"><?php echo esc_html( wp_trim_words( wp_strip_all_tags($logline), 22 ) ); ?></p>
-        <?php endif; ?>
-      </div>
-    </article>
-    </a>
-    <?php endforeach; ?>
-  </div>
-</section>
-<?php endif; ?>
 
 <!-- ABOUT + CAPABILITIES -->
 <section class="section-pad <?php echo $bg(); ?> section-border-top">
