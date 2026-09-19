@@ -665,6 +665,84 @@ add_filter('pll_the_language_link', '__return_empty_string');
  *  - Keep "film_genre" (users search "phim hành động Bluebells" etc.)
  * ──────────────────────────────────────────────────────────────────────── */
 
+/* ─────────────────────────────────────────────────────────────────────────
+ * English URLs in the sitemap
+ *
+ * Core builds the sitemap from home_url(), which is unprefixed while the
+ * sitemap is being generated, so every entry comes out Vietnamese. Rather
+ * than duplicate the rules about what belongs in a sitemap, this provider
+ * asks the providers core already registered for their URLs and republishes
+ * each one under /en/. Anything excluded from the Vietnamese sitemap stays
+ * excluded from the English one.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+if ( class_exists('WP_Sitemaps_Provider') && ! class_exists('BBS_English_Sitemap_Provider') ) {
+    class BBS_English_Sitemap_Provider extends WP_Sitemaps_Provider {
+
+        public function __construct() {
+            $this->name        = 'en';
+            $this->object_type = 'en';
+        }
+
+        /** Every Vietnamese loc core would publish, collected once. */
+        private function source_locs() {
+            static $locs = null;
+            if ( $locs !== null ) return $locs;
+
+            $locs   = [];
+            $server = function_exists('wp_sitemaps_get_server') ? wp_sitemaps_get_server() : null;
+            if ( ! $server || ! isset($server->registry) ) return $locs;
+
+            foreach ( $server->registry->get_providers() as $name => $provider ) {
+                if ( $name === $this->name || ! $provider instanceof WP_Sitemaps_Provider ) continue;
+
+                $subtypes = $provider->get_object_subtypes();
+                $subtypes = $subtypes ? array_keys($subtypes) : [''];
+
+                foreach ( $subtypes as $subtype ) {
+                    $pages = (int) $provider->get_max_num_pages( $subtype );
+                    for ( $page = 1; $page <= $pages; $page++ ) {
+                        foreach ( (array) $provider->get_url_list( $page, $subtype ) as $entry ) {
+                            if ( ! empty($entry['loc']) ) $locs[] = $entry['loc'];
+                        }
+                    }
+                }
+            }
+
+            // The front page is worth stating explicitly rather than relying on
+            // whichever provider happens to carry it.
+            $locs[] = bbs_home_url_raw('/');
+
+            $locs = array_values( array_unique($locs) );
+            return $locs;
+        }
+
+        public function get_url_list( $page_num, $object_subtype = '' ) {
+            $per_page = wp_sitemaps_get_max_urls( $this->object_type );
+            $slice    = array_slice( $this->source_locs(), ( max(1, (int) $page_num) - 1 ) * $per_page, $per_page );
+
+            $urls = [];
+            foreach ( $slice as $loc ) {
+                $path   = (string) parse_url( $loc, PHP_URL_PATH );
+                $urls[] = [ 'loc' => bbs_lang_permalink('en', $path) ];
+            }
+            return $urls;
+        }
+
+        public function get_max_num_pages( $object_subtype = '' ) {
+            $count    = count( $this->source_locs() );
+            $per_page = wp_sitemaps_get_max_urls( $this->object_type );
+            return $count ? (int) ceil( $count / $per_page ) : 0;
+        }
+    }
+}
+
+add_action('init', function() {
+    if ( class_exists('BBS_English_Sitemap_Provider') && function_exists('wp_register_sitemap_provider') ) {
+        wp_register_sitemap_provider( 'en', new BBS_English_Sitemap_Provider() );
+    }
+}, 20);
+
 add_filter('wp_sitemaps_add_provider', function( $provider, $name ) {
     if ( $name === 'users' ) return false;
     // Polylang wraps each provider in PLL_Multilingual_Sitemaps_Provider,
